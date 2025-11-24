@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>College Bus Booking - Book Your Seat Online</title>
+    <meta name="description" content="Easy and secure online bus ticket booking for B.Tech college students. Select seats, pay online, and get instant confirmation with real-time seat availability." />
+    <meta name="author" content="College Bus Booking System" />
+    <meta name="keywords" content="college bus booking, online bus tickets, student transport, seat booking, bus reservation, college transport" />
+
+    <!-- PWA ESSENTIAL META TAGS (ADD THESE) 👇 -->
+    <meta name="theme-color" content="#3b82f6" />
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="BusBooking">
+    
+
+    <meta property="og:title" content="College Bus Booking - Book Your Seat Online" />
+    <meta property="og:description" content="Easy and secure online bus ticket booking for B.Tech college students. Select seats, pay online, and get instant confirmation." />
+    <meta property="og:type" content="website" />
+
+    <!-- ICONS (TERE PAS ALREADY PERFECT ✅) -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    
+    <!-- PWA MANIFEST (PATH FIX KARO 👇) -->
+    <link rel="manifest" href="/manifest.json">
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@CollegeBus" />
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- 🔥 SERVICE WORKER REGISTER (YE ADD KARO 👇) -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+              console.log('✅ Service Worker registered:', registration);
+            })
+            .catch(error => {
+              console.log('❌ Service Worker registration failed:', error);
+            });
+        });
+      }
+    </script>
+  </body>
+</html>
