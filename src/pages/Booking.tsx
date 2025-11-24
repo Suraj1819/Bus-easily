@@ -91,21 +91,6 @@ const Booking = () => {
     }
   };
 
-  // --- HELPER FUNCTION FOR DOWNLOADING TICKET ---
-  const downloadTicket = (bookingId: string) => {
-    // ---------------------------------------------------------
-    // 👇 FIX FOR PWA NOTIFICATION 👇
-    // ---------------------------------------------------------
-    // Yahan apne backend ka URL dalein jahan se PDF generate hoti hai.
-    // window.open('_blank') use karne se Android System ka Download Manager trigger hota hai
-    // jisse notification bar me "Downloading..." dikhta hai.
-    
-    const pdfUrl = `https://your-api-domain.com/api/generate-ticket?bookingId=${bookingId}`;
-    
-    // Agar file local hai ya public bucket me hai to seedha URL dalein
-    window.open(pdfUrl, '_blank');
-  };
-
   const handlePayment = async () => {
     if (!user || !bus || selectedSeats.length === 0) {
       toast.error("Booking details are incomplete. Please try again.");
@@ -116,6 +101,7 @@ const Booking = () => {
     try {
       const bookingId = `BKG${Date.now()}`;
 
+      // 1. Insert Booking
       const { error: bookingError } = await supabase
         .from("bookings")
         .insert({
@@ -123,13 +109,16 @@ const Booking = () => {
           user_id: user.id,
           bus_id: busId,
           seat_ids: selectedSeats,
-          total_fare: totalFare,
+          // 👇 FIX: Maine isko wapis total_fare kar diya hai
+          total_fare: totalFare, 
           status: "confirmed",
           payment_status: "completed",
+          booked_at: new Date().toISOString(),
         });
 
       if (bookingError) throw bookingError;
 
+      // 2. Update Seats Status
       const { error: seatsError } = await supabase
         .from("seats")
         .update({
@@ -142,19 +131,14 @@ const Booking = () => {
       if (seatsError) throw seatsError;
 
       toast.success("Booking confirmed successfully!");
-
-      // 👇 Booking confirm hote hi download start karein
-      // Note: Kuch browsers me async request ke baad popup block ho sakta hai.
-      // Agar ye kaam na kare, to 'Download' button Dashboard page par lagana behtar hoga.
-      downloadTicket(bookingId);
-
-      // Thoda wait karke dashboard par bhejein taaki download start ho sake
+      
+      // 3. Redirect to Dashboard
       setTimeout(() => {
         navigate("/dashboard", { replace: true });
       }, 1000);
 
     } catch (error: any) {
-      console.error(error);
+      console.error("Booking Error:", error);
       toast.error(error.message || "Payment failed");
     } finally {
       setLoading(false);

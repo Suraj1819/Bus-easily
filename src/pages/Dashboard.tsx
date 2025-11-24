@@ -20,6 +20,8 @@ import {
   Trash2,
   Info,
   Loader2,
+  Ban,
+  AlertTriangle, 
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -32,10 +34,10 @@ import { pdf, Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer
 // ==========================================
 
 const theme = {
-  primary: "#2563EB", // Royal Blue
-  textDark: "#111827", // Nearly Black
-  textGray: "#6B7280", // Cool Gray
-  divider: "#E5E7EB", // Light Gray
+  primary: "#2563EB", 
+  textDark: "#111827", 
+  textGray: "#6B7280", 
+  divider: "#E5E7EB", 
   bg: "#F3F4F6",
 };
 
@@ -50,22 +52,19 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     alignItems: "center",
   },
-  // The Main Ticket Container
   ticketContainer: {
     width: "100%",
-    maxWidth: 400, // Mobile/Wallet width
+    maxWidth: 400,
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
     overflow: "hidden",
     boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
   },
-  // Top Accent Line
   accentStrip: {
     height: 6,
     backgroundColor: theme.primary,
     width: "100%",
   },
-  // Header Section
   header: {
     padding: 24,
     flexDirection: "row",
@@ -92,11 +91,9 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica-Bold",
     textAlign: "right",
   },
-  // Main Body
   body: {
     padding: 24,
   },
-  // Route & Time Block
   routeBlock: {
     marginBottom: 20,
   },
@@ -119,7 +116,6 @@ const styles = StyleSheet.create({
     color: theme.textDark,
     fontFamily: "Helvetica-Bold",
   },
-  // Info Grid (2 Columns)
   grid: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -127,7 +123,6 @@ const styles = StyleSheet.create({
   },
   colLeft: { alignItems: "flex-start", width: "60%" },
   colRight: { alignItems: "flex-end", width: "40%" },
-  
   fieldGroup: { marginBottom: 12 },
   label: {
     fontSize: 8,
@@ -141,7 +136,6 @@ const styles = StyleSheet.create({
     color: theme.textDark,
     fontFamily: "Helvetica-Bold",
   },
-  // Seat Highlight
   seatBox: {
     marginTop: 4,
     paddingVertical: 4,
@@ -154,7 +148,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Helvetica-Bold",
   },
-  // Divider with "Cut" circles
   dividerContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -185,10 +178,9 @@ const styles = StyleSheet.create({
     borderStyle: "dashed",
     marginHorizontal: 10,
   },
-  // Footer (Passenger)
   footer: {
     padding: 24,
-    backgroundColor: "#FAFAFA", // Slightly distinct bg
+    backgroundColor: "#FAFAFA",
   },
   passengerRow: {
     flexDirection: "row",
@@ -205,7 +197,6 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: theme.textGray,
   },
-  // Barcode Simulation
   barcodeContainer: {
     marginTop: 8,
     alignItems: "center",
@@ -229,19 +220,17 @@ const styles = StyleSheet.create({
 
 const TicketPdf = ({ booking, profile, seatsByBus }: { booking: any; profile: any; seatsByBus: any }) => {
   const bookingIdShort = booking.booking_id.slice(0, 8).toUpperCase();
-  
   const bus = booking.bus || {};
   const busNumber = bus.bus_number || "BUS-000";
   const route = bus.route || "Campus Route";
   
-  // Date & Time Logic
   let departureTime = "00:00";
   const depDateRaw = bus.departure_time;
   const depDateObj = new Date(depDateRaw);
   if (!isNaN(depDateObj.getTime())) {
     departureTime = depDateObj.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
   } else if (typeof depDateRaw === 'string' && depDateRaw.includes(":")) {
-     departureTime = depDateRaw; // If it's already a string like "10:00 AM"
+     departureTime = depDateRaw;
   }
 
   const travelDateRaw = bus.travel_date || bus.date || booking.booked_at;
@@ -252,18 +241,14 @@ const TicketPdf = ({ booking, profile, seatsByBus }: { booking: any; profile: an
     year: 'numeric'
   });
 
-  // Seats
   const seatsForBus = seatsByBus[booking.bus_id] || [];
   const seatNumbers = booking.seat_ids?.map((id: any) => {
       const s = seatsForBus.find((seat: any) => seat.id === id);
       return s?.seat_number || String(id);
     }) || [];
   const seatDisplay = seatNumbers.length > 0 ? seatNumbers.join(", ") : "N/A";
-
-  // Fare
   const totalFare = `₹${booking.total_fare.toFixed(2)}`;
 
-  // Barcode generation (Visual only)
   const renderBarcode = () => {
     const bars = [];
     for (let i = 0; i < 40; i++) {
@@ -278,12 +263,8 @@ const TicketPdf = ({ booking, profile, seatsByBus }: { booking: any; profile: an
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        
-        {/* TICKET CARD START */}
         <View style={styles.ticketContainer}>
           <View style={styles.accentStrip} />
-          
-          {/* HEADER */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>BOARDING PASS</Text>
             <View>
@@ -291,19 +272,13 @@ const TicketPdf = ({ booking, profile, seatsByBus }: { booking: any; profile: an
               <Text style={styles.bookingIdValue}>{bookingIdShort}</Text>
             </View>
           </View>
-
-          {/* MAIN BODY */}
           <View style={styles.body}>
-            {/* ROUTE SECTION */}
             <View style={styles.routeBlock}>
               <Text style={styles.routeLabel}>Route / Destination</Text>
               <Text style={styles.timeValue}>{departureTime}</Text>
               <Text style={styles.routeValue}>{route}</Text>
             </View>
-
-            {/* DETAILS GRID */}
             <View style={styles.grid}>
-              {/* LEFT COL */}
               <View style={styles.colLeft}>
                 <View style={styles.fieldGroup}>
                   <Text style={styles.label}>DATE</Text>
@@ -314,8 +289,6 @@ const TicketPdf = ({ booking, profile, seatsByBus }: { booking: any; profile: an
                   <Text style={styles.value}>{busNumber}</Text>
                 </View>
               </View>
-
-              {/* RIGHT COL */}
               <View style={styles.colRight}>
                  <View style={styles.fieldGroup}>
                   <Text style={[styles.label, {textAlign: 'right'}]}>FARE</Text>
@@ -330,15 +303,11 @@ const TicketPdf = ({ booking, profile, seatsByBus }: { booking: any; profile: an
               </View>
             </View>
           </View>
-
-          {/* TEAR-OFF DIVIDER */}
           <View style={styles.dividerContainer}>
             <View style={styles.cutCircleLeft} />
             <View style={styles.dashedLine} />
             <View style={styles.cutCircleRight} />
           </View>
-
-          {/* FOOTER / PASSENGER INFO */}
           <View style={styles.footer}>
             <View style={styles.passengerRow}>
                <View>
@@ -351,16 +320,12 @@ const TicketPdf = ({ booking, profile, seatsByBus }: { booking: any; profile: an
                  <Text style={[styles.value, {color: theme.primary}]}>{booking.status.toUpperCase()}</Text>
                </View>
             </View>
-
-            {/* BARCODE */}
             <View style={styles.barcodeContainer}>
                {renderBarcode()}
                <Text style={styles.ticketNote}>Please show this ticket to the bus conductor.</Text>
             </View>
           </View>
         </View>
-        {/* TICKET CARD END */}
-
       </Page>
     </Document>
   );
@@ -420,8 +385,15 @@ const Dashboard = () => {
 
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
+  // Dialog States
   const [confirmUnbookOpen, setConfirmUnbookOpen] = useState(false);
   const [bookingToUnbook, setBookingToUnbook] = useState<Booking | null>(null);
+  
+  // Delete History Dialog State
+  const [deleteHistoryOpen, setDeleteHistoryOpen] = useState(false);
+  const [historyItemToDelete, setHistoryItemToDelete] = useState<string | null>(null);
+  const [isDeletingHistory, setIsDeletingHistory] = useState(false);
+
   const [seatsByBus, setSeatsByBus] = useState<Record<string, SeatInfo[]>>({});
 
   const navigate = useNavigate();
@@ -540,6 +512,9 @@ const Dashboard = () => {
     return false;
   });
 
+  // Cancelled Count
+  const cancelledCount = bookings.filter((b) => b.status === "cancelled").length;
+
   const totalSpent = bookings
     .filter((b) => b.status === "confirmed")
     .reduce((sum, b) => sum + (b.total_fare || 0), 0);
@@ -558,11 +533,18 @@ const Dashboard = () => {
     navigate("/browse", { replace: true });
   };
 
+  // --- DIALOG OPENERS ---
   const openUnbookDialog = (booking: Booking) => {
     setBookingToUnbook(booking);
     setConfirmUnbookOpen(true);
   };
 
+  const openDeleteHistoryDialog = (bookingId: string) => {
+    setHistoryItemToDelete(bookingId);
+    setDeleteHistoryOpen(true);
+  };
+
+  // --- ACTIONS ---
   const handleUnbook = async (booking: Booking) => {
     if (booking.status !== "confirmed") {
       notify("error", "Only confirmed bookings can be cancelled");
@@ -571,7 +553,6 @@ const Dashboard = () => {
 
     try {
       setUnbooking(booking.id);
-
       const { error: bookingError } = await supabase
         .from("bookings")
         .update({ status: "cancelled" })
@@ -609,13 +590,36 @@ const Dashboard = () => {
     }
   };
 
-  // --- DOWNLOAD PDF LOGIC ---
+  const confirmDeleteHistory = async () => {
+    if (!historyItemToDelete) return;
+    setIsDeletingHistory(true);
+    try {
+      const { error } = await supabase
+        .from("bookings")
+        .delete()
+        .eq("id", historyItemToDelete);
+
+      if (error) throw error;
+
+      // Update local state to instantly reflect changes in stats
+      setBookings((prev) => prev.filter((b) => b.id !== historyItemToDelete));
+      notify("success", "Deleted from history");
+    } catch (error: any) {
+      console.error(error);
+      notify("error", "Failed to delete");
+    } finally {
+      setIsDeletingHistory(false);
+      setDeleteHistoryOpen(false);
+      setHistoryItemToDelete(null);
+    }
+  };
+
+  // --- DOWNLOAD PDF ---
   const downloadTicketPdf = async (booking: Booking) => {
     if (!profile) {
       notify("error", "Profile not loaded");
       return;
     }
-
     try {
       const blob = await pdf(
         <TicketPdf
@@ -624,7 +628,6 @@ const Dashboard = () => {
           seatsByBus={seatsByBus}
         />
       ).toBlob();
-
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -632,7 +635,6 @@ const Dashboard = () => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-
       notify("success", "Ticket PDF downloaded");
     } catch (err) {
       console.error(err);
@@ -672,6 +674,15 @@ const Dashboard = () => {
               handleUnbook(bookingToUnbook);
             }
           }}
+        />
+      )}
+
+      {deleteHistoryOpen && (
+        <DeleteHistoryDialog
+          open={deleteHistoryOpen}
+          loading={isDeletingHistory}
+          onCancel={() => setDeleteHistoryOpen(false)}
+          onConfirm={confirmDeleteHistory}
         />
       )}
 
@@ -837,27 +848,12 @@ const Dashboard = () => {
                     </div>
                   </Card>
                 )}
-
-              <div className="flex items-center justify-between pt-2 border-t border-dashed border-border/60">
-                <div className="text-[0.7rem] text-muted-foreground">
-                  Please carry a valid college ID while travelling.
-                  <br />
-                  Show this ticket at boarding time.
-                </div>
-                <div className="border border-dashed border-border rounded-lg px-3 py-2 text-center">
-                  <p className="text-[0.65rem] text-muted-foreground">
-                    Booking Code
-                  </p>
-                  <p className="font-mono text-xs font-semibold text-foreground">
-                    {selectedBooking.booking_id.slice(0, 8).toUpperCase()}
-                  </p>
-                </div>
-              </div>
             </div>
           </div>
         </div>
       )}
 
+      {/* NAVIGATION BAR - UPDATED WITH CANCELLED STATUS */}
       <nav className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-40">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -874,12 +870,13 @@ const Dashboard = () => {
                   My Dashboard
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  All your tickets and trip history in one place
+                  Trip history & E-Tickets
                 </span>
               </div>
             </div>
           </div>
 
+          {/* HERE IS THE TOP RIGHT STATS AREA */}
           <div className="hidden md:flex items-center gap-3 text-xs text-muted-foreground">
             <span className="px-3 py-1 rounded-full bg-accent/60 border border-border">
               Total bookings: <strong>{bookings.length}</strong>
@@ -889,6 +886,9 @@ const Dashboard = () => {
             </span>
             <span className="px-3 py-1 rounded-full bg-accent/60 border border-border">
               History: <strong>{historyBookings.length}</strong>
+            </span>
+            <span className="px-3 py-1 rounded-full bg-accent/60 border border-border">
+              Cancelled: <strong>{cancelledCount}</strong>
             </span>
           </div>
         </div>
@@ -902,10 +902,12 @@ const Dashboard = () => {
                 Welcome, {profile?.name || "Guest"}!
               </h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Here&apos;s a quick overview of your bus bookings.
+                Overview of your bus bookings.
               </p>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs w-full md:w-auto">
+            
+            {/* CARDS GRID */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs w-full md:w-auto">
               <div className="bg-accent/50 p-3 rounded-lg border border-border">
                 <p className="text-muted-foreground">Total Bookings</p>
                 <p className="font-semibold text-foreground text-lg">
@@ -918,7 +920,13 @@ const Dashboard = () => {
                   {currentBookings.length}
                 </p>
               </div>
-              <div className="bg-accent/50 p-3 rounded-lg border border-border col-span-2 md:col-span-1">
+              <div className="bg-accent/50 p-3 rounded-lg border border-border">
+                <p className="text-muted-foreground">Cancelled</p>
+                <p className="font-semibold text-destructive text-lg">
+                  {cancelledCount}
+                </p>
+              </div>
+              <div className="bg-accent/50 p-3 rounded-lg border border-border">
                 <p className="text-muted-foreground flex items-center gap-1">
                   <IndianRupee className="h-3 w-3" />
                   Total Spent
@@ -972,9 +980,6 @@ const Dashboard = () => {
                 <h3 className="text-xl font-semibold text-foreground mb-2">
                   No Current Bookings
                 </h3>
-                <p className="text-muted-foreground mb-6">
-                  You haven&apos;t booked any tickets recently.
-                </p>
                 <Button onClick={handleBackToBrowse}>Browse Buses</Button>
               </Card>
             ) : (
@@ -993,10 +998,7 @@ const Dashboard = () => {
                           {getStatusBadge(booking.status)}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Booking ID:{" "}
-                          <span className="font-mono">
-                            {booking.booking_id}
-                          </span>
+                          ID: <span className="font-mono">{booking.booking_id}</span>
                         </p>
                         <p className="text-sm text-muted-foreground">
                           Route: {booking.bus.route}
@@ -1004,13 +1006,6 @@ const Dashboard = () => {
                         <p className="text-sm text-muted-foreground flex items-center gap-1">
                           <Clock className="h-3 w-3" />
                           Departure: {booking.bus.departure_time}
-                        </p>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1">
-                          <CalendarDays className="h-3 w-3" />
-                          Booked on:{" "}
-                          {new Date(
-                            booking.booked_at
-                          ).toLocaleDateString()}
                         </p>
                       </div>
                       <div className="text-right space-y-2">
@@ -1094,11 +1089,21 @@ const Dashboard = () => {
                           ).toLocaleDateString()}
                         </p>
                       </div>
-                      <div className="text-right">
+                      <div className="flex flex-col items-end gap-2">
                         <div className="flex items-center justify-end gap-1 text-xl font-semibold text-muted-foreground">
                           <IndianRupee className="h-4 w-4" />
                           {booking.total_fare}
                         </div>
+                        
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-2"
+                          onClick={() => openDeleteHistoryDialog(booking.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete
+                        </Button>
                       </div>
                     </div>
                   </Card>
@@ -1112,6 +1117,7 @@ const Dashboard = () => {
   );
 };
 
+// --- DIALOGS ---
 const UnbookConfirmDialog = ({
   open,
   booking,
@@ -1126,14 +1132,13 @@ const UnbookConfirmDialog = ({
   onConfirm: () => void;
 }) => {
   if (!open || !booking) return null;
-
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
       <Card className="w-full max-w-sm rounded-2xl border-border bg-card shadow-2xl overflow-hidden">
         <div className="px-5 py-4 border-b border-border/60 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-full bg-destructive/10 flex items-center justify-center">
-              <Trash2 className="h-4 w-4 text-destructive" />
+              <Ban className="h-4 w-4 text-destructive" />
             </div>
             <div>
               <p className="text-sm font-semibold text-foreground">
@@ -1144,49 +1149,16 @@ const UnbookConfirmDialog = ({
               </p>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-full"
-            onClick={!loading ? onCancel : undefined}
-            disabled={loading}
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          <Button variant="ghost" size="icon" className="rounded-full" onClick={!loading ? onCancel : undefined} disabled={loading}><X className="h-4 w-4" /></Button>
         </div>
         <div className="px-5 pt-4 pb-5 space-y-3">
           <div className="text-xs text-muted-foreground space-y-1">
-            <div>
-              Bus:{" "}
-              <span className="font-medium text-foreground">
-                {booking.bus?.bus_number}
-              </span>
-            </div>
-            <div>
-              Booking ID:{" "}
-              <span className="font-mono text-foreground">
-                {booking.booking_id}
-              </span>
-            </div>
+            <div>Bus: <span className="font-medium text-foreground">{booking.bus?.bus_number}</span></div>
+            <div>Booking ID: <span className="font-mono text-foreground">{booking.booking_id}</span></div>
           </div>
           <div className="flex gap-3 mt-3">
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={!loading ? onCancel : undefined}
-              disabled={loading}
-            >
-              Keep booking
-            </Button>
-            <Button
-              variant="destructive"
-              className="flex-1 flex items-center justify-center gap-2"
-              onClick={!loading ? onConfirm : undefined}
-              disabled={loading}
-            >
-              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {loading ? "Cancelling..." : "Yes, unbook"}
-            </Button>
+            <Button variant="outline" className="flex-1" onClick={!loading ? onCancel : undefined} disabled={loading}>Keep booking</Button>
+            <Button variant="destructive" className="flex-1 flex items-center justify-center gap-2" onClick={!loading ? onConfirm : undefined} disabled={loading}>{loading && <Loader2 className="h-4 w-4 animate-spin" />}{loading ? "Cancelling..." : "Yes, unbook"}</Button>
           </div>
         </div>
       </Card>
@@ -1194,33 +1166,53 @@ const UnbookConfirmDialog = ({
   );
 };
 
-const NotificationStack = ({
-  notifications,
+const DeleteHistoryDialog = ({
+  open,
+  loading,
+  onCancel,
+  onConfirm,
 }: {
-  notifications: NotificationItem[];
-}) => (
+  open: boolean;
+  loading: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) => {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+      <Card className="w-full max-w-sm rounded-2xl border-border bg-card shadow-2xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-border/60 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+            </div>
+            <div><p className="text-sm font-semibold text-foreground">Delete from History?</p></div>
+          </div>
+          <Button variant="ghost" size="icon" className="rounded-full" onClick={!loading ? onCancel : undefined} disabled={loading}><X className="h-4 w-4" /></Button>
+        </div>
+        <div className="px-5 py-5 text-center">
+          <p className="text-sm text-muted-foreground mb-4">Are you sure you want to delete this record permanently? This action cannot be undone.</p>
+          <div className="flex gap-3">
+            <Button variant="outline" className="flex-1" onClick={!loading ? onCancel : undefined} disabled={loading}>Cancel</Button>
+            <Button variant="destructive" className="flex-1 flex items-center justify-center gap-2" onClick={!loading ? onConfirm : undefined} disabled={loading}>{loading && <Loader2 className="h-4 w-4 animate-spin" />}{loading ? "Deleting..." : "Delete"}</Button>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+};
+
+const NotificationStack = ({ notifications }: { notifications: NotificationItem[] }) => (
   <div className="fixed top-4 right-4 z-[90] space-y-2 w-72">
     {notifications.map((item) => (
-      <div
-        key={item.id}
-        className={cn(
-          "rounded-xl border px-4 py-3 shadow-lg backdrop-blur bg-card/95 flex flex-col gap-1",
-          item.kind === "success" && "border-emerald-500/70",
-          item.kind === "error" && "border-destructive/70",
-          item.kind === "info" && "border-primary/60"
-        )}
-      >
+      <div key={item.id} className={cn("rounded-xl border px-4 py-3 shadow-lg backdrop-blur bg-card/95 flex flex-col gap-1", item.kind === "success" && "border-emerald-500/70", item.kind === "error" && "border-destructive/70", item.kind === "info" && "border-primary/60")}>
         <div className="flex items-center gap-2 text-sm font-semibold">
-          {item.kind === "success" && (
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-          )}
+          {item.kind === "success" && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
           {item.kind === "error" && <X className="h-4 w-4 text-destructive" />}
           {item.kind === "info" && <Info className="h-4 w-4 text-primary" />}
           <span>{item.title}</span>
         </div>
-        {item.message && (
-          <p className="text-xs text-muted-foreground">{item.message}</p>
-        )}
+        {item.message && <p className="text-xs text-muted-foreground">{item.message}</p>}
       </div>
     ))}
   </div>

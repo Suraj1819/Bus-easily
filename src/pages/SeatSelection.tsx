@@ -45,6 +45,12 @@ interface BusData {
   total_seats: number;
   departure_time?: string | null;
   arrival_time?: string | null;
+  // If you want, you can also add these here for typing,
+  // but we’re accessing via "as any" to keep it flexible:
+  // driver_name?: string | null;
+  // driver_phone?: string | null;
+  // conductor_name?: string | null;
+  // conductor_phone?: string | null;
 }
 interface Booking {
   id: string;
@@ -61,6 +67,16 @@ interface NotificationItem {
   kind: NotificationKind;
   title: string;
   message?: string;
+}
+
+interface DriverInfo {
+  name: string | null;
+  phone: string | null;
+}
+
+interface ConductorInfo {
+  name: string | null;
+  phone: string | null;
 }
 
 /* ===================== Helpers ===================== */
@@ -96,7 +112,7 @@ const SeatSelection = () => {
   const [userId, setUserId] = useState<string>("");
   const [bookingDetailsOpen, setBookingDetailsOpen] = useState<boolean>(false);
   const [selectedBookingDetails, setSelectedBookingDetails] = useState<any>(null);
-  
+
   // ---- tickets drawer/modal states ----
   const [viewTicketsOpen, setViewTicketsOpen] = useState<boolean>(false);
   const [userBookings, setUserBookings] = useState<Booking[]>([]);
@@ -111,6 +127,10 @@ const SeatSelection = () => {
   const [statusPopupOpen, setStatusPopupOpen] = useState<boolean>(false);
   const [statusPopupType, setStatusPopupType] = useState<"locked" | "booked">("locked");
   const [statusPopupSeat, setStatusPopupSeat] = useState<Seat | null>(null);
+
+  // ---- NEW: driver & conductor state ----
+  const [driver, setDriver] = useState<DriverInfo | null>(null);
+  const [conductor, setConductor] = useState<ConductorInfo | null>(null);
 
   const notify = (kind: NotificationKind, title: string, message?: string) => {
     const id = Date.now();
@@ -142,6 +162,7 @@ const SeatSelection = () => {
     // eslint-disable-next-line
   }, [seats]);
 
+  // Realtime seat changes
   useEffect(() => {
     if (!busId) return;
     const channel = supabase
@@ -179,6 +200,7 @@ const SeatSelection = () => {
     };
   }, [busId]);
 
+  // Realtime bookings (for bookedBy map)
   useEffect(() => {
     if (!busId) return;
     const channel = supabase
@@ -209,6 +231,46 @@ const SeatSelection = () => {
     };
   }, [busId]);
 
+  // OPTIONAL: Realtime bus updates (driver / conductor changes)
+  useEffect(() => {
+    if (!busId) return;
+
+    const channel = supabase
+      .channel(`public:buses-${busId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "buses",
+          filter: `id=eq.${busId}`,
+        },
+        (payload) => {
+          const newBus = payload.new as any;
+
+          setBus((prev) => ({
+            ...(prev || {}),
+            ...newBus,
+          }));
+
+          setDriver({
+            name: newBus.driver_name ?? null,
+            phone: newBus.driver_phone ?? null,
+          });
+
+          setConductor({
+            name: newBus.conductor_name ?? null,
+            phone: newBus.conductor_phone ?? null,
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [busId]);
+
   /* ------------------------------ Data / Auth ------------------------------ */
   const checkAuth = async () => {
     const {
@@ -226,11 +288,33 @@ const SeatSelection = () => {
       setLoading(true);
       const { data: busData, error: busError } = await supabase
         .from("buses")
-        .select("*")
+        .select(
+          `
+          *,
+          driver_name,
+          driver_phone,
+          conductor_name,
+          conductor_phone
+        `
+        )
         .eq("id", busId)
         .single();
+
       if (busError) throw busError;
+
       setBus(busData as BusData);
+
+      // NEW: set driver & conductor from busData
+      setDriver({
+        name: (busData as any).driver_name ?? null,
+        phone: (busData as any).driver_phone ?? null,
+      });
+
+      setConductor({
+        name: (busData as any).conductor_name ?? null,
+        phone: (busData as any).conductor_phone ?? null,
+      });
+
       const { data: seatsData, error: seatsError } = await supabase
         .from("seats")
         .select("*")
@@ -238,7 +322,9 @@ const SeatSelection = () => {
         .order("row_number")
         .order("column_number");
       if (seatsError) throw seatsError;
+
       setSeats(sortSeats(((seatsData || []) as Seat[]).map(normalizeSeatRecord)));
+
       // Fetch bookings to build bookedBy map
       const { data: bookingsData, error: bookingsError } = await supabase
         .from("bookings")
@@ -246,6 +332,7 @@ const SeatSelection = () => {
         .eq("bus_id", busId)
         .eq("status", "confirmed");
       if (bookingsError) throw bookingsError;
+
       const bookedMap: { [key: string]: string } = {};
       (bookingsData || []).forEach((booking: Booking) => {
         booking.seat_ids.forEach((seatId: string) => {
@@ -295,22 +382,20 @@ const SeatSelection = () => {
   };
 
   // Keep this function for when the Current User clicks their OWN booking
-   const fetchBookingDetails = async (seatId: string) => {
+  const fetchBookingDetails = async (seatId: string) => {
     try {
-      // CHANGE 1: .single() hata kar .limit(1) lagaya
       const { data, error } = await supabase
         .from("bookings")
         .select("*")
         .contains("seat_ids", [seatId])
         .eq("status", "confirmed")
-        .limit(1); // <--- Ye important hai
+        .limit(1);
 
       if (error) {
         console.error("Booking fetch error:", error);
         throw error;
       }
 
-      // CHANGE 2: Array me se pehla item nikalna manually
       const booking = data?.[0];
 
       if (!booking) {
@@ -318,24 +403,20 @@ const SeatSelection = () => {
         return;
       }
 
-      // Check current user
       if (booking.user_id !== userId) {
         notify("info", "Seat already booked", "Someone else grabbed this one.");
-        // Agar aap chahte hain ki dusre user ki details dikhe, to 'return' hata dein
-        // return; 
       }
 
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("name, branch, year, phone")
         .eq("user_id", booking.user_id)
-        .maybeSingle(); // Yahan maybeSingle safe hai kyunki user ek hi hoga
+        .maybeSingle();
 
       if (profileError) throw profileError;
 
       const seat = seats.find((s) => s.id === seatId);
-      
-      // ... baaki aapka logic same rahega
+
       setSelectedBookingDetails({
         seatNumber: seat?.seat_number,
         userName: profile?.name,
@@ -345,7 +426,6 @@ const SeatSelection = () => {
         bookedAt: booking.booked_at,
       });
       setBookingDetailsOpen(true);
-
     } catch (err) {
       console.error(err);
       notify("error", "Booking details unavailable");
@@ -445,7 +525,7 @@ const SeatSelection = () => {
           },
         ]);
       if (insertError) throw insertError;
-      
+
       const { error: updateError } = await supabase
         .from("seats")
         .update({
@@ -595,7 +675,7 @@ const SeatSelection = () => {
     <div className="min-h-screen bg-gradient-to-b from-background to-accent relative">
       {/* Notifications */}
       <NotificationStack notifications={notifications} />
-      
+
       {/* Booking details dialog (For Own Bookings) */}
       <BookingDetailsDialog
         open={bookingDetailsOpen}
@@ -627,7 +707,7 @@ const SeatSelection = () => {
         />
       )}
 
-      {/* Driver Details Modal */}
+      {/* Driver & Conductor Details Modal (UPDATED) */}
       {driverDetailsOpen && (
         <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
           <Card className="w-full max-w-sm border-border bg-card/95">
@@ -637,7 +717,7 @@ const SeatSelection = () => {
                   <Bus className="h-4 w-4 text-primary" />
                 </div>
                 <span className="text-sm font-semibold text-foreground">
-                  Driver Details
+                  Driver & Conductor Details
                 </span>
               </div>
               <Button
@@ -648,31 +728,75 @@ const SeatSelection = () => {
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div className="p-4 space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-full bg-accent flex items-center justify-center">
-                  <User2 className="h-4 w-4 text-primary" />
+
+            <div className="p-4 space-y-4">
+              {/* DRIVER */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Driver
+                </h3>
+
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-full bg-accent flex items-center justify-center">
+                    <User2 className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-muted-foreground">Name</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {driver?.name || "Not available"}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Name</p>
-                  <p className="text-sm font-semibold text-foreground">
-                    Hello John
-                  </p>
+
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-full bg-accent flex items-center justify-center">
+                    <PhoneCall className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-muted-foreground">Phone</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {driver?.phone || "Not available"}
+                    </p>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-full bg-accent flex items-center justify-center">
-                  <PhoneCall className="h-4 w-4 text-primary" />
+
+              <hr className="border-border/60" />
+
+              {/* CONDUCTOR */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Conductor
+                </h3>
+
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-full bg-accent flex items-center justify-center">
+                    <User2 className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-muted-foreground">Name</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {conductor?.name || "Not available"}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Phone</p>
-                  <p className="text-sm font-semibold text-foreground">
-                    8888888888
-                  </p>
+
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-full bg-accent flex items-center justify-center">
+                    <PhoneCall className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-muted-foreground">Phone</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {conductor?.phone || "Not available"}
+                    </p>
+                  </div>
                 </div>
               </div>
+
               <p className="text-[11px] text-muted-foreground mt-2">
-                You can contact the driver shortly before departure if needed.
+                You can contact the driver or conductor shortly before departure if
+                needed.
               </p>
             </div>
           </Card>
@@ -903,105 +1027,243 @@ const SeatSelection = () => {
               </div>
             </Card>
           </div>
-          {/* RIGHT: Booking Summary */}
-          <div className="lg:col-span-1 mt-6 lg:mt-0 lg:relative">
-            <div className="lg:sticky lg:top-[100px]">
-              <Card className="p-4 sm:p-6 border-border space-y-4 h-fit">
-                <div className="flex items-center justify-between gap-3 mb-2">
-                  <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2">
-                    <IndianRupee className="h-5 w-5 text-primary" />
-                    Booking Summary
-                  </h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1 text-xs sm:text-sm"
-                    onClick={handleOpenTickets}
-                  >
-                    <TicketIcon className="h-4 w-4" />
-                    <span className="hidden sm:inline">View Tickets</span>
-                    <span className="sm:hidden">Tickets</span>
-                  </Button>
-                </div>
-                <div className="bg-accent p-3 sm:p-4 rounded-lg space-y-1">
-                  <p className="text-[11px] sm:text-xs text-muted-foreground">
-                    Bus
-                  </p>
-                  <p className="font-semibold text-foreground text-sm sm:text-base">
-                    {bus?.bus_number} • {bus?.route}
-                  </p>
-                </div>
-                <div className="bg-accent p-3 sm:p-4 rounded-lg">
-                  <p className="text-[11px] sm:text-xs text-muted-foreground mb-2">
-                    Selected Seats
-                  </p>
-                  {currentSeatIds.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {seats
-                        .filter((s) => currentSeatIds.includes(s.id))
-                        .map((s) => (
-                          <Badge
-                            key={s.id}
-                            variant="default"
-                            className="text-xs sm:text-sm"
-                          >
-                            {s.seat_number}
-                          </Badge>
-                        ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs sm:text-sm text-muted-foreground italic">
-                      No seats selected yet
-                    </p>
-                  )}
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-1 bg-accent p-3 rounded-lg">
-                    <span className="text-[11px] sm:text-xs text-muted-foreground">
-                      Number of Seats
-                    </span>
-                    <span className="text-lg font-bold text-foreground">
-                      {currentSeatIds.length}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1 bg-accent p-3 rounded-lg">
-                    <span className="text-[11px] sm:text-xs text-muted-foreground">
-                      Fare per Seat
-                    </span>
-                    <span className="text-lg font-bold text-foreground flex items-center gap-1">
-                      <IndianRupee className="h-4 w-4" />
-                      {bus?.fare ?? "-"}
-                    </span>
-                  </div>
-                </div>
-                <div className="border-t-2 border-border pt-4 mt-2">
-                  <p className="text-xs sm:text-sm text-muted-foreground mb-2">
-                    Total Amount
-                  </p>
-                  <div className="flex items-center gap-1 text-3xl sm:text-4xl font-bold text-primary">
-                    <IndianRupee className="h-6 w-6 sm:h-8 sm:w-8" />
-                    {totalFare}
-                  </div>
-                  {currentSeatIds.length > 0 && (
-                    <p className="text-[11px] sm:text-xs text-muted-foreground mt-2">
-                      ₹{bus?.fare} × {currentSeatIds.length} seat
-                      {currentSeatIds.length > 1 ? "s" : ""}
-                    </p>
-                  )}
-                </div>
-                <Button
-                  onClick={proceedToBooking}
-                  disabled={currentSeatIds.length === 0}
-                  className="w-full shadow-lg text-sm sm:text-base"
-                  size="lg"
+{/* RIGHT: Booking Summary */}
+<div className="lg:col-span-1 mt-6 lg:mt-0 lg:relative">
+  <div className="lg:sticky lg:top-[100px]">
+    <Card className="p-4 sm:p-5 lg:p-6 border-border/80 shadow-lg space-y-4 h-fit bg-gradient-to-b from-card to-accent/30">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 mb-1">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+            <IndianRupee className="h-4 w-4 text-primary" />
+          </div>
+          <div className="flex flex-col">
+            <h3 className="text-base sm:text-lg font-bold text-foreground leading-tight">
+              Booking Summary
+            </h3>
+            <span className="text-[10px] sm:text-[11px] text-muted-foreground">
+              Review your bus, selected & locked seats
+            </span>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1 text-[11px] sm:text-xs rounded-full"
+          onClick={handleOpenTickets}
+        >
+          <TicketIcon className="h-3 w-3" />
+          <span className="hidden sm:inline">View Tickets</span>
+          <span className="sm:hidden">Tickets</span>
+        </Button>
+      </div>
+
+      {/* Bus Info */}
+      <div className="rounded-xl border border-border/60 bg-background/70 p-3 sm:p-4 space-y-1">
+        <p className="text-[10px] sm:text-[11px] text-muted-foreground uppercase tracking-wide">
+          Bus
+        </p>
+        <p className="font-semibold text-foreground text-sm sm:text-base">
+          {bus?.bus_number ?? "—"}{" "}
+          {bus?.route && (
+            <span className="text-xs sm:text-sm text-muted-foreground">
+              • {bus.route}
+            </span>
+          )}
+        </p>
+        <div className="flex flex-wrap gap-2 mt-2 text-[10px] sm:text-[11px] text-muted-foreground">
+          <span className="px-2 py-0.5 rounded-full bg-accent/60 border border-border/70">
+            Total: <strong>{bus?.total_seats ?? "-"}</strong>
+          </span>
+          <span className="px-2 py-0.5 rounded-full bg-accent/60 border border-border/70">
+            Available: <strong>{availableSeatsCount}</strong>
+          </span>
+          {/* <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/40 text-emerald-600">
+            Booked by You: <strong>{bookedSeatsCount}</strong>
+          </span> */}
+        </div>
+      </div>
+
+      {/* Selected Seats */}
+      <div className="rounded-xl border border-border/60 bg-background/70 p-3 sm:p-4 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[10px] sm:text-[11px] text-muted-foreground uppercase tracking-wide">
+            Selected Seats
+          </p>
+          {currentSeatIds.length > 0 && (
+            <span className="text-[10px] sm:text-[11px] text-muted-foreground">
+              {currentSeatIds.length} selected
+            </span>
+          )}
+        </div>
+
+        {currentSeatIds.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5 mt-1">
+            {seats
+              .filter((s) => currentSeatIds.includes(s.id))
+              .map((s) => (
+                <Badge
+                  key={s.id}
+                  variant="outline"
+                  className="text-[11px] sm:text-xs px-2 py-0.5 rounded-full flex items-center gap-1 cursor-pointer hover:border-primary/60"
+                  onClick={() => toggleSeatSelection(s)} // click badge to unselect
                 >
-                  {currentSeatIds.length === 0
-                    ? "Select Seats to Continue"
-                    : "Proceed to Payment"}
-                </Button>
-              </Card>
+                  <span>{s.seat_number}</span>
+                  <X className="h-3 w-3 opacity-70" />
+                </Badge>
+              ))}
+          </div>
+        ) : (
+          <p className="text-xs sm:text-sm text-muted-foreground italic">
+            No seats selected yet. Tap a seat in the bus layout to add it here.
+          </p>
+        )}
+      </div>
+
+      {/* Locked Seats (by you) */}
+      <div className="rounded-xl border border-border/60 bg-background/70 p-3 sm:p-4 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[10px] sm:text-[11px] text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+            Locked Seats
+            <Lock className="h-3 w-3 text-primary" />
+          </p>
+        </div>
+
+        {seats.some(
+          (s) => s.status === "locked" && s.locked_by === userId
+        ) ? (
+          <div className="flex flex-wrap gap-1.5 mt-1">
+            {seats
+              .filter(
+                (s) => s.status === "locked" && s.locked_by === userId
+              )
+              .map((s) => (
+                <Badge
+                  key={s.id}
+                  variant="secondary"
+                  className="text-[11px] sm:text-xs px-2 py-0.5 rounded-full flex items-center gap-1"
+                >
+                  <span>{s.seat_number}</span>
+                  {s.locked_until && (
+                    <span className="text-[9px] opacity-70">
+                      until{" "}
+                      {new Date(s.locked_until).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  )}
+                </Badge>
+              ))}
+          </div>
+        ) : (
+          <p className="text-xs sm:text-sm text-muted-foreground italic">
+            You haven&apos;t locked any seats yet.
+          </p>
+        )}
+      </div>
+
+      {/* Quick Stats */}
+            {/* Quick Stats */}
+      <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-3">
+          {/* Number of Seats */}
+          <div className="flex flex-col gap-1 rounded-xl bg-background/80 border border-border/70 p-3 sm:p-3.5">
+            <span className="text-[10px] sm:text-[11px] text-muted-foreground uppercase tracking-wide">
+              Seats Selected
+            </span>
+            <div className="flex items-end justify-between">
+              <span className="text-2xl font-extrabold text-foreground leading-none">
+                {currentSeatIds.length}
+              </span>
+              <span className="text-[10px] sm:text-[11px] text-muted-foreground">
+                out of {bus?.total_seats ?? "-"}
+              </span>
             </div>
           </div>
+
+          {/* Fare per Seat */}
+          <div className="flex flex-col gap-1 rounded-xl bg-background/80 border border-border/70 p-3 sm:p-3.5">
+            <span className="text-[10px] sm:text-[11px] text-muted-foreground uppercase tracking-wide">
+              Fare per Seat
+            </span>
+            <div className="flex items-center justify-between">
+              <span className="text-2xl font-extrabold text-foreground flex items-center gap-1 leading-none">
+                <IndianRupee className="h-4 w-4 text-primary" />
+                {bus?.fare ?? "-"}
+              </span>
+              {currentSeatIds.length > 0 && (
+                <span className="text-[10px] sm:text-[11px] text-muted-foreground">
+                  x {currentSeatIds.length}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Tiny preview of exactly which seats are counted here */}
+        {currentSeatIds.length > 0 && (
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            {seats
+              .filter((s) => currentSeatIds.includes(s.id))
+              .map((s) => (
+                <Badge
+                  key={s.id}
+                  variant="outline"
+                  className="text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full"
+                >
+                  {s.seat_number}
+                </Badge>
+              ))}
+          </div>
+        )}
+      </div>
+
+      {/* Total */}
+      <div className="border-t border-border/70 pt-3 sm:pt-4 mt-1 sm:mt-2 space-y-1.5">
+        <div className="flex items-center justify-between">
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            Total Amount
+          </p>
+          {currentSeatIds.length > 0 && (
+            <p className="text-[11px] sm:text-xs text-muted-foreground">
+              ₹{bus?.fare} × {currentSeatIds.length} seat
+              {currentSeatIds.length > 1 ? "s" : ""}
+            </p>
+          )}
+        </div>
+        <div className="flex items-end justify-between">
+          <div className="flex items-center gap-1 text-3xl sm:text-4xl font-extrabold text-primary">
+            <IndianRupee className="h-6 w-6 sm:h-7 sm:w-7" />
+            <span>{totalFare}</span>
+          </div>
+          {currentSeatIds.length > 0 && (
+            <span className="text-[10px] sm:text-[11px] text-muted-foreground">
+              Taxes / extra charges: Included
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* CTA */}
+      <Button
+        onClick={proceedToBooking}
+        disabled={currentSeatIds.length === 0}
+        className={cn(
+          "w-full shadow-lg text-sm sm:text-base rounded-xl transition-all",
+          currentSeatIds.length === 0
+            ? "bg-muted text-muted-foreground cursor-not-allowed"
+            : "bg-primary hover:bg-primary/90 text-primary-foreground"
+        )}
+        size="lg"
+      >
+        {currentSeatIds.length === 0
+          ? "Select Seats to Continue"
+          : "Proceed to Payment"}
+      </Button>
+    </Card>
+  </div>
+</div>
         </div>
       </div>
     </div>
@@ -1028,10 +1290,14 @@ const SeatStatusPopup = ({
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
       <Card className="w-full max-w-xs bg-card border-border shadow-2xl overflow-hidden rounded-2xl animate-in zoom-in-95 duration-200">
         <div className="p-6 flex flex-col items-center text-center">
-          <div className={cn(
-            "h-12 w-12 rounded-xl flex items-center justify-center mb-4 shadow-sm",
-            isLocked ? "bg-secondary/50 text-secondary-foreground" : "bg-destructive/10 text-destructive"
-          )}>
+          <div
+            className={cn(
+              "h-12 w-12 rounded-xl flex items-center justify-center mb-4 shadow-sm",
+              isLocked
+                ? "bg-secondary/50 text-secondary-foreground"
+                : "bg-destructive/10 text-destructive"
+            )}
+          >
             {isLocked ? (
               <Lock className="h-6 w-6" />
             ) : (
@@ -1043,7 +1309,10 @@ const SeatStatusPopup = ({
             {isLocked ? "Seat Locked" : "Seat Booked"}
           </h2>
 
-          <Badge variant="secondary" className="mb-3 text-sm px-3 py-0.5 font-semibold bg-secondary/60">
+          <Badge
+            variant="secondary"
+            className="mb-3 text-sm px-3 py-0.5 font-semibold bg-secondary/60"
+          >
             Seat {seat.seat_number}
           </Badge>
 
@@ -1054,7 +1323,9 @@ const SeatStatusPopup = ({
           {isLocked && seat.locked_until && (
             <div className="flex items-center justify-center gap-1.5 mt-1 text-xs text-muted-foreground font-medium">
               <Clock className="h-3 w-3" />
-              <span>Expires: {new Date(seat.locked_until).toLocaleTimeString()}</span>
+              <span>
+                Expires: {new Date(seat.locked_until).toLocaleTimeString()}
+              </span>
             </div>
           )}
 
@@ -1071,7 +1342,6 @@ const SeatStatusPopup = ({
   );
 };
 
-// ... Keeping existing modals ...
 const BookingTicketsModal = ({
   open,
   onClose,
@@ -1082,120 +1352,202 @@ const BookingTicketsModal = ({
 }: {
   open: boolean;
   onClose: () => void;
-  bookings: Booking[];
+  bookings: Booking[];      // already filtered for this bus in parent
   loading: boolean;
-  bus: BusData | null;
-  seats: Seat[];
+  bus: BusData | null;      // current bus only
+  seats: Seat[];            // seat matrix of this bus only
 }) => {
-  return open ? (
+  if (!open) return null;
+
+  return (
     <div className="fixed inset-0 z-[520] bg-black/40 backdrop-blur-sm flex items-center justify-center px-2 py-2">
-      <div className="relative w-full max-w-2xl bg-white rounded-xl border border-border shadow-2xl overflow-y-auto max-h-[80vh] p-4 sm:p-8">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute right-4 top-4"
-          onClick={onClose}
-        >
-          <X className="h-5 w-5" />
-        </Button>
-        <h2 className="text-lg font-bold flex items-center gap-2 mb-6">
-          <TicketIcon className="h-5 w-5 text-primary" />
-          Your Tickets
-        </h2>
-        {loading ? (
-          <div className="w-full flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="relative w-full max-w-3xl bg-background rounded-2xl border border-border shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-border/70 bg-card/80 backdrop-blur-sm">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-primary/10 flex items-center justify-center">
+              <TicketIcon className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+            </div>
+            <div className="flex flex-col">
+              <h2 className="text-base sm:text-lg font-bold text-foreground leading-tight">
+                Your Tickets
+              </h2>
+              <span className="text-[10px] sm:text-[11px] text-muted-foreground">
+                All your bookings for this bus
+              </span>
+            </div>
           </div>
-        ) : bookings.length === 0 ? (
-          <p className="text-center text-muted-foreground py-20">
-            You have no bookings yet.
-          </p>
-        ) : (
-          <div className="space-y-4">
-            {bookings.map((booking) => (
-              <Card
-                key={booking.id}
-                className="p-4 border border-muted bg-muted/40 rounded-lg"
-              >
-                <div className="flex flex-col md:flex-row justify-between md:items-center gap-2">
-                  <div>
-                    <div className="text-[12px] text-muted-foreground mb-1">
-                      Booked At
-                    </div>
-                    <div className="text-[15px] font-semibold">
-                      {new Date(booking.booked_at).toLocaleString()}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[12px] text-muted-foreground mb-1">
-                      Booking Status
-                    </div>
-                    <Badge
-                      variant={
-                        booking.status === "confirmed"
-                          ? "default"
-                          : (booking.status === "pending"
-                              ? "secondary"
-                              : "destructive")
-                      }
-                      className="px-3 py-1 rounded-full text-xs"
-                    >
-                      {booking.status}
-                    </Badge>
-                  </div>
-                </div>
-                <hr className="my-3" />
-                <div className="flex flex-wrap gap-3 mb-2">
-                  <span className="text-xs text-muted-foreground mr-2">
-                    Seats:
-                  </span>
-                  {booking.seat_ids.map((sid) => {
-                    const seat = seats.find((s) => s.id === sid);
-                    return (
-                      <Badge key={sid} variant="outline" className="text-xs">
-                        {seat?.seat_number || sid}
-                      </Badge>
-                    );
-                  })}
-                </div>
-                <div className="mt-3 text-xs text-muted-foreground flex flex-col sm:flex-row sm:items-center sm:gap-3">
-                  <span>
-                    Fare per seat:{" "}
-                    <strong className="text-foreground">
-                      ₹{bus?.fare || "?"}
-                    </strong>
-                  </span>
-                  <span>
-                    × Seats:{" "}
-                    <strong className="text-foreground">{booking.seat_ids.length}</strong>
-                  </span>
-                  <span>
-                    = Total:{" "}
-                    <strong className="text-foreground">
-                      ₹{booking.total_amount !== undefined && booking.total_amount !== null
-                        ? booking.total_amount
-                        : (bus?.fare ? booking.seat_ids.length * bus.fare : "?")}
-                    </strong>
-                  </span>
-                </div>
-                {bus && (
-                  <>
-                    <div className="flex gap-2 text-xs mt-2">
-                      <div className="bg-accent px-2 rounded font-semibold">
-                        Bus: {bus.bus_number}
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-full"
+            onClick={onClose}
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+
+        {/* Content */}
+        <div className="max-h-[75vh] overflow-y-auto px-4 sm:px-6 pb-4 sm:pb-6 pt-3 space-y-4">
+          {loading ? (
+            // Loading state
+            <div className="w-full flex flex-col items-center justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                Fetching your tickets...
+              </p>
+            </div>
+          ) : bookings.length === 0 ? (
+            // Simple empty state
+            <div className="w-full flex flex-col items-center justify-center py-16 space-y-2">
+              <p className="text-sm sm:text-base text-foreground font-semibold">
+                You have not booked any tickets
+              </p>
+              <p className="text-[11px] sm:text-xs text-muted-foreground text-center max-w-xs">
+                Once you book seats from this bus layout, they will appear here
+                as your tickets.
+              </p>
+            </div>
+          ) : (
+            // Tickets list (only bookings whose seats exist in this bus's matrix)
+            <div className="space-y-4 sm:space-y-5">
+              {bookings.map((booking) => {
+                // Map booking.seat_ids -> seats of THIS bus
+                const bookedSeats =
+                  booking.seat_ids
+                    ?.map((sid) => seats.find((s) => s.id === sid))
+                    .filter((s): s is Seat => Boolean(s)) ?? [];
+
+                // IMPORTANT:
+                // Agar is booking ki koi seat iss bus ki seat-matrix me nahi mil rahi,
+                // to history me bhi is bus ke view me mat dikhao.
+                if (bookedSeats.length === 0) return null;
+
+                return (
+                  <Card
+                    key={booking.id}
+                    className="border border-border/70 bg-card/90 rounded-xl overflow-hidden"
+                  >
+                    {/* Top strip: booked time + status */}
+                    <div className="px-4 sm:px-5 pt-3 sm:pt-4 pb-3 border-b border-border/60 bg-gradient-to-r from-accent/40 to-card">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[11px] text-muted-foreground uppercase tracking-wide">
+                            Booked At
+                          </span>
+                          <span className="text-sm sm:text-[15px] font-semibold text-foreground">
+                            {new Date(booking.booked_at).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex flex-col items-start sm:items-end gap-1">
+                          <span className="text-[11px] text-muted-foreground uppercase tracking-wide">
+                            Status
+                          </span>
+                          <Badge
+                            variant={
+                              booking.status === "confirmed"
+                                ? "default"
+                                : booking.status === "pending"
+                                ? "secondary"
+                                : "destructive"
+                            }
+                            className="px-3 py-1 rounded-full text-[11px] sm:text-xs"
+                          >
+                            {booking.status}
+                          </Badge>
+                        </div>
                       </div>
-                      <div className="bg-accent px-2 rounded">{bus.route}</div>
                     </div>
-                  </>
-                )}
-              </Card>
-            ))}
-          </div>
-        )}
+
+                    {/* Middle: bus info + seats */}
+                    <div className="px-4 sm:px-5 py-3 sm:py-4 space-y-3 sm:space-y-4">
+                      {/* Bus info (current bus) */}
+                      {bus && (
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                          <div>
+                            <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
+                              Bus
+                            </p>
+                            <p className="text-sm sm:text-base font-semibold text-foreground">
+                              {bus.bus_number}{" "}
+                              <span className="text-xs sm:text-sm text-muted-foreground">
+                                • {bus.route}
+                              </span>
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5 text-[10px] sm:text-[11px] text-muted-foreground">
+                            <span className="px-2 py-0.5 rounded-full bg-accent/60 border border-border/70">
+                              Total seats: <strong>{bus.total_seats}</strong>
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full bg-accent/60 border border-border/70">
+                              Seats in this booking:{" "}
+                              <strong>{bookedSeats.length}</strong>
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Seats list */}
+                      <div className="space-y-1.5">
+                        <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
+                          Seats in this booking
+                        </p>
+
+                        <div className="flex flex-wrap gap-1.5">
+                          {bookedSeats.map((seat) => (
+                            <Badge
+                              key={seat.id}
+                              variant="outline"
+                              className="text-[11px] sm:text-xs px-2 py-0.5 rounded-full"
+                            >
+                              {seat.seat_number}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bottom: price breakdown */}
+                    <div className="px-4 sm:px-5 pb-3 sm:pb-4 pt-2 border-t border-dashed border-border/60 bg-accent/30">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 text-[11px] sm:text-xs text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span>
+                            Fare per seat:{" "}
+                            <strong className="text-foreground">
+                              ₹{bus?.fare || "?"}
+                            </strong>
+                          </span>
+                          <span>
+                            × Seats:{" "}
+                            <strong className="text-foreground">
+                              {bookedSeats.length}
+                            </strong>
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 sm:gap-2">
+                          <span>= Total:</span>
+                          <span className="flex items-center gap-1 text-sm sm:text-base font-semibold text-primary">
+                            <IndianRupee className="h-3 w-3 sm:h-4 sm:w-4" />
+                            {booking.total_fare ??
+                              (bus?.fare
+                                ? bookedSeats.length * bus.fare
+                                : "?")}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
-  ) : null;
+  );
 };
+
 const NotificationStack = ({
   notifications,
 }: {
@@ -1309,7 +1661,8 @@ const SeatActionDialog = ({
           <CheckCircle2 className="h-4 w-4" />
           {isSelected ? "Remove from booking" : "Select for booking"}
         </Button>
-        {/* <Button
+        {/* If you ever want single-click book, you can enable this:
+        <Button
           variant="outline"
           className="w-full justify-start gap-3 text-sm"
           onClick={onBook}
@@ -1353,8 +1706,12 @@ const BookingDetailsDialog = ({
             <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
               <TicketIcon className="h-8 w-8 text-primary" />
             </div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">Booking Details</h2>
-            <p className="text-sm text-muted-foreground">Seat {booking.seatNumber}</p>
+            <h2 className="text-2xl font-bold text-foreground mb-2">
+              Booking Details
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Seat {booking.seatNumber}
+            </p>
           </div>
         </div>
         <div className="p-6 space-y-6">
@@ -1365,7 +1722,9 @@ const BookingDetailsDialog = ({
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Passenger Name</p>
-                <p className="text-sm font-medium text-foreground">{booking.userName || 'N/A'}</p>
+                <p className="text-sm font-medium text-foreground">
+                  {booking.userName || "N/A"}
+                </p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -1375,7 +1734,7 @@ const BookingDetailsDialog = ({
               <div>
                 <p className="text-xs text-muted-foreground">Branch & Year</p>
                 <p className="text-sm font-medium text-foreground">
-                  {booking.userBranch || 'N/A'} - {booking.userYear || 'N/A'}
+                  {booking.userBranch || "N/A"} - {booking.userYear || "N/A"}
                 </p>
               </div>
             </div>
@@ -1385,7 +1744,9 @@ const BookingDetailsDialog = ({
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Contact Number</p>
-                <p className="text-sm font-medium text-foreground">{booking.userPhone || 'N/A'}</p>
+                <p className="text-sm font-medium text-foreground">
+                  {booking.userPhone || "N/A"}
+                </p>
               </div>
             </div>
             <div className="flex items-start gap-3">
