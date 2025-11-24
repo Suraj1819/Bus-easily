@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+// FIX: Corrected import path from react-react-router-dom
+// import { useNavigate } from "react-router-dom"; 
 import { supabase } from "@/integrations/supabase/client";
 
 import { Button } from "@/components/ui/button";
@@ -22,10 +24,7 @@ import {
 } from "lucide-react";
 
 // --- 1. IMPORT THE ACTUAL BUS ASSET HERE ---
-// Ensure this import path is correct for your project structure.
 import BusImage from '@/assets/bus.png'; 
-// If your asset folder is named 'assect' as you mentioned previously, use:
-// import BusImage from '@/assect/bus.png'; 
 
 
 /* ----------------------------- Original Google Logo ----------------------------- */
@@ -146,7 +145,7 @@ const Auth = () => {
 
       if (error) throw error;
       toast.success("Magic link sent! Check your email.");
-      setLoginMethod("password"); // Return to password view after OTP request
+      setLoginMethod("password");
     } catch (error: any) {
       toast.error(error.message || "Failed to send email");
     } finally {
@@ -212,13 +211,13 @@ const Auth = () => {
     }
   };
 
-  /* ----------------------------- Forgot Screen (Improved White UI) ---------------------------- */
+  /* ----------------------------- Forgot Screen ---------------------------- */
 
   if (showForgotPassword) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f0f4f8]"> {/* Light subtle background */}
+      <div className="min-h-screen flex items-center justify-center bg-[#f0f4f8]">
         <div className="w-full max-w-md px-4">
-          <Card className="border-none shadow-xl rounded-2xl"> {/* White Card */}
+          <Card className="border-none shadow-xl rounded-2xl">
             <CardHeader className="pt-8 text-center space-y-2">
               <div className="mx-auto h-11 w-11 rounded-xl bg-violet-100 flex items-center justify-center mb-1 shadow-inner">
                 <Mail className="h-6 w-6 text-violet-500" />
@@ -274,13 +273,13 @@ const Auth = () => {
       <div className="w-full lg:w-1/2 flex items-center justify-center px-4 py-10 md:py-16">
         <div className="w-full max-w-sm">
           
-          {/* BUSEASILY LOGO AND NAME (Using bus.png style via import) */}
+          {/* BUSEASILY LOGO AND NAME */}
           <div className="mb-8 flex flex-col items-center">
             <div className="p-3 bg-slate-50 rounded-2xl shadow-lg border border-slate-100">
                 <img 
                     src={BusImage} 
                     alt="Buseasily Logo" 
-                    className="w-10 h-10" // Adjust size as needed
+                    className="w-10 h-10" 
                 />
             </div>
             <h1 className="text-2xl font-bold text-slate-900 mt-3 tracking-tight">
@@ -298,7 +297,11 @@ const Auth = () => {
               </CardDescription>
             </CardHeader>
 
-            <CardContent className="space-y-5 pb-6 px-6">
+            {/* Form Content - Using key change for smooth fade transition */}
+            <CardContent 
+                key={isLogin ? 'login' : 'signup'} 
+                className="space-y-5 pb-6 px-6 transition-opacity duration-300 ease-in-out"
+            >
               {/* Google button with processing indicator */}
               <Button
                 onClick={handleGoogleAuth}
@@ -308,7 +311,6 @@ const Auth = () => {
               >
                 <div className="flex items-center gap-2">
                   {googleLoading && (
-                    // Processing symbol next to Google icon
                     <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
                   )}
                   <GoogleLogo />
@@ -463,30 +465,39 @@ const Auth = () => {
         </div>
       </div>
 
-      {/* RIGHT: Hero text + colorful shapes (Light Theme, hidden on mobile) */}
-      <div className="hidden lg:flex lg:w-1/2 relative items-center justify-center overflow-hidden bg-[#f5f7fa]">
-        {/* Soft background circles */}
-        <div className="absolute -top-24 -right-10 h-64 w-64 rounded-full bg-gradient-to-br from-violet-300 to-sky-200 opacity-70" />
-        <div className="absolute -bottom-24 -left-10 h-64 w-64 rounded-full bg-gradient-to-br from-pink-300 to-orange-200 opacity-70" />
+      {/* RIGHT: Hero Section - Professional & Branded */}
+      <div className="hidden lg:flex lg:w-1/2 relative items-center justify-center overflow-hidden bg-white border-l border-slate-100 shadow-inner">
+        
+        {/* Background Gradient/Subtle Effect */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white via-slate-50 to-[#f0f4f8]" />
 
-        {/* Random shapes */}
-        <div className="absolute top-24 left-10 h-16 w-16 bg-violet-300 rounded-3xl rotate-12 opacity-80" />
-        <div className="absolute bottom-28 left-1/3 h-20 w-28 bg-sky-200 rounded-3xl -rotate-6 opacity-80" />
-        <div className="absolute top-36 right-24 h-16 w-12 bg-pink-300 rounded-3xl -rotate-12 opacity-80" />
-        <div className="absolute bottom-16 right-10 h-14 w-20 bg-purple-200 rounded-3xl rotate-6 opacity-80" />
+        {/* Central Branding Element */}
+        <div className="relative z-20 p-8 max-w-lg mx-auto text-center">
+            
+            {/* Prominent Logo Display */}
+            <div className="mb-6 inline-block p-5 bg-violet-50 rounded-3xl shadow-2xl shadow-violet-200/50 transform hover:scale-[1.02] transition duration-500 ease-in-out">
+                <img 
+                    src={BusImage} 
+                    alt="Buseasily Logo" 
+                    className="w-20 h-20" 
+                />
+            </div>
 
-        {/* Text */}
-        <div className="relative z-10 max-w-md px-8">
-          <h2 className="text-4xl font-semibold text-slate-900 leading-tight mb-3">
-            Changing the way
-          </h2>
-          <h2 className="text-4xl font-semibold text-slate-900 leading-tight mb-4">
-            the world writes
-          </h2>
-          <p className="text-sm text-slate-500">
-            A clean, modern interface for your college bus booking system —
-            inspired by the best SaaS login designs.
-          </p>
+            {/* Headline - Strong and Clear Branding */}
+            <h2 className="text-6xl font-extrabold text-slate-900 leading-snug mb-3">
+                Buseasily.
+            </h2>
+            <h2 className="text-4xl font-semibold text-slate-700 leading-snug mb-6">
+                Your Campus Mobility, Simplified.
+            </h2>
+            
+            {/* Descriptive Text */}
+            <p className="text-xl text-slate-500 mb-10 max-w-xs mx-auto">
+                Reserve seats, track routes, and manage all your campus transit needs from one secure dashboard.
+            </p>
+            
+            {/* Subtle Decorative Element (Fade to White at bottom) */}
+            <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-white/50 to-transparent pointer-events-none" />
         </div>
       </div>
     </div>
