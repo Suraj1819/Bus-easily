@@ -23,8 +23,8 @@ export default defineConfig(({ mode }) => ({
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
       manifest: {
-        name: "College Bus Booking",
-        short_name: "CollegeBus",
+        name: "Buseasily",
+        short_name: "Buseasily",
         description: "India's #1 College Transport Platform",
         theme_color: "#3B82F6",
         background_color: "#ffffff",

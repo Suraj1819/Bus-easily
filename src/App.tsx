@@ -16,6 +16,9 @@ import AdminSignup from "./pages/AdminSignup";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 import Payment from "./pages/Payment";
+import Gallery from "./pages/Gallery";
+import Contact from "./pages/Contact";
+import Thankyou from "./pages/Thankyou";
 
 const queryClient = new QueryClient();
 
@@ -28,8 +31,11 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/gallery" element={<Gallery />} />
+          <Route path="/contact" element={<Contact />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/browse" element={<Browse />} />
+          <Route path="/thankyou" element={<Thankyou />} />
           <Route path="/seat-selection/:busId" element={<SeatSelection />} />
           <Route path="/booking/:busId" element={<Booking />} />
           <Route path="/dashboard" element={<Dashboard />} />

@@ -1,6 +1,6 @@
 {
-  "name": "College Bus Booking",
-  "short_name": "BusBooking",
+  "name": "Buseasily",
+  "short_name": "Buseasily",
   "description": "Easy online bus seat booking for college students",
   "start_url": "/",
   "display": "standalone",
