@@ -75,7 +75,7 @@ const Auth = () => {
   /* ---------- Auth Flow State ---------- */
   const [authMode, setAuthMode] = useState<AuthMode>("signin");
   const [authStep, setAuthStep] = useState<AuthStep>("email");
-  const [loginMethod, setLoginMethod] = useState<"otp" | "password">("otp");
+  const [loginMethod, setLoginMethod] = useState<"otp" | "password">("password");
   const [otpType, setOtpType] = useState<OtpType>("email");
   const [showForgotPassword, setShowForgotPassword] = useState(false);
 
@@ -103,7 +103,9 @@ const Auth = () => {
   useEffect(() => {
     const checkSession = async () => {
       const { data } = await supabase.auth.getSession();
-      if (data.session) checkUserProfile(data.session.user.id);
+      if (data.session) {
+        redirectAfterAuth(data.session.user.id);
+      }
     };
 
     checkSession();
@@ -111,14 +113,18 @@ const Auth = () => {
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session) {
         toast.success("Login successful!");
-        checkUserProfile(session.user.id);
+        redirectAfterAuth(session.user.id);
       }
     });
 
     return () => data.subscription.unsubscribe();
   }, [navigate]);
 
-  const checkUserProfile = async (userId: string) => {
+  useEffect(() => {
+    setLoginMethod("password");
+  }, []);
+
+  const redirectAfterAuth = async (userId: string) => {
     try {
       const { data: profile } = await supabase
         .from("profiles")
@@ -126,9 +132,11 @@ const Auth = () => {
         .eq("user_id", userId)
         .single();
 
+      // Always redirect to browse page after successful login
       navigate(profile ? "/browse" : "/profile");
     } catch {
-      navigate("/profile");
+      // If there's any error, still redirect to browse
+      navigate("/browse");
     }
   };
 
@@ -241,7 +249,22 @@ const Auth = () => {
       if (data.success) {
         toast.success("Verification successful!");
         const { data: userData } = await supabase.auth.getUser();
-        if (userData.user) checkUserProfile(userData.user.id);
+        if (userData.user) {
+          // Check if the user's profile exists in the database
+          const { data: profileData, error: profileError } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("user_id", userData.user.id)
+            .single();
+
+          if (profileError || !profileData) {
+            // If no profile exists, navigate to the profile completion page
+            navigate("/complete-profile");
+          } else {
+            // If profile exists, navigate to the browse page
+            navigate("/browse");
+          }
+        }
       } else throw new Error(data.message || "Invalid code");
     } catch (err: any) {
       toast.error(err.message || "Invalid code");
@@ -733,8 +756,8 @@ const Auth = () => {
                   type={otpType === "email" ? "email" : "tel"}
                   placeholder={
                     otpType === "email"
-                      ? ""
-                      : ""
+                      ? "your@email.com"
+                      : "+91 12345 67890"
                   }
                   value={otpType === "email" ? email : phone}
                   onChange={(e) =>

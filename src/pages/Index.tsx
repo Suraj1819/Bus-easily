@@ -7,7 +7,6 @@ import {
   Shield,
   Smartphone,
   Star,
-  Users,
   Zap,
   CheckCircle2,
   TrendingUp,
@@ -18,8 +17,6 @@ import {
   X,
   Camera,
   Image as ImageIcon,
-  ArrowLeft,
-  Calendar,
   MapPin,
   Users as UsersIcon,
   Home,
@@ -30,6 +27,7 @@ import { Link } from "react-router-dom";
 import busHero from "@/assets/bus-hero.jpg";
 import busInterior from "@/assets/bus-interior.jpg";
 import studentsBus from "@/assets/students-bus.jpg";
+import busIcon from "@/assets/android-chrome-512x512.png";
 
 const Index = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -42,7 +40,7 @@ const Index = () => {
           <div className="flex items-center justify-between">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2">
-              <img className="w-8 h-8 sm:w-10 sm:h-10" src="../../public/android-chrome-512x512.png" alt="Buseasily" />
+              <img className="w-8 h-8 sm:w-10 sm:h-10" src={busIcon} alt="Buseasily" />
               <span className="text-lg sm:text-xl font-bold text-foreground">Buseasily</span>
             </Link>
 
@@ -497,7 +495,7 @@ const Index = () => {
       <div className="col-span-2 lg:col-span-1">
         <div className="flex items-center gap-3 mb-4">
           <div className="h-12 w-12 flex items-center justify-center  rounded-xl">
-            <img className="h-8 w-8" src="../../public/android-chrome-512x512.png" alt="Buseasily" />
+            <img className="h-8 w-8" src={busIcon} alt="Buseasily" />
           </div>
           <div>
             <span className="text-foreground font-bold text-xl block">Buseasily</span>

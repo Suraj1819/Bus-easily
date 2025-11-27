@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
+import busIcon from "@/assets/android-chrome-512x512.png"
 import {
   Mail,
   Phone,
@@ -177,7 +178,7 @@ const Contact = () => {
           {/* Logo and Mobile Back Button */}
           <div className="flex items-center gap-4">
             <Link to="/" className="flex items-center gap-2">
-              <img className="w-8 h-8 sm:w-10 sm:h-10" src="../../public/android-chrome-512x512.png" alt="Buseasily" />
+              <img className="w-8 h-8 sm:w-10 sm:h-10" src={busIcon} alt="Buseasily" />
               <span className="text-lg sm:text-xl font-bold text-foreground">Buseasily</span>
             </Link>
 
@@ -268,7 +269,7 @@ const Contact = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-base mb-1">Email Support</h3>
-                  <p className="text-sm text-muted-foreground mb-2">support@buseasily.com</p>
+                  <p className="text-sm text-muted-foreground mb-2">surajkumarraj8888@gmail.com</p>
                   <p className="text-xs text-green-600 font-medium flex items-center gap-1 justify-center">
                     <CheckCircle className="h-3 w-3" />
                     24/7 Available
@@ -411,7 +412,7 @@ const Contact = () => {
                         <Input
                           id="phone"
                           type="tel"
-                          placeholder="+91 9876543210"
+                          placeholder="+91 Phone Number"
                           value={formData.phone}
                           onChange={(e) => handleInputChange('phone', e.target.value)}
                           className={`pl-10 ${errors.phone ? 'border-red-500' : ''}`}
