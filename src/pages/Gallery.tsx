@@ -21,7 +21,7 @@ import {
   Menu,
   Home,
   Check,
-  Filter,
+  LogIn
 } from "lucide-react";
 
 // Import your images here
@@ -180,7 +180,7 @@ const Gallery = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${currentImage.title.replace(/\s+/g, "-").toLowerCase()}-buseasily.jpg`;
+      link.download = `${currentImage.title.replace(/\s+/g, "-").toLowerCase()}-buseasily.jng`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -206,7 +206,7 @@ const Gallery = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${image.title.replace(/\s+/g, "-").toLowerCase()}-buseasily.jpg`;
+      link.download = `${image.title.replace(/\s+/g, "-").toLowerCase()}-buseasily.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -482,7 +482,7 @@ const Gallery = () => {
           <div className="flex items-center justify-between">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-1.5 sm:gap-2">
-              <img className="w-7 h-7 sm:w-10 sm:h-10" src="src/assets/bus.png" alt="" />
+              <img className="w-7 h-7 sm:w-10 sm:h-10" src="../../android-chrome-512x512.png" alt="" />
               <span className="text-base sm:text-xl font-bold text-foreground">Buseasily</span>
             </Link>
 
@@ -845,204 +845,146 @@ const Gallery = () => {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border py-6 sm:py-8 md:py-10 lg:py-12 mt-8 sm:mt-12 md:mt-16">
-        <div className="container mx-auto px-3 sm:px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 md:gap-8 mb-6 sm:mb-8">
-            {/* Brand */}
-            <div className="col-span-2 md:col-span-1">
-              <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
-                <div className="h-8 w-8 sm:h-10 sm:w-10 md:h-14 md:w-14 flex items-center justify-center bg-primary/10 rounded-full">
-                  <img className="h-5 w-5 sm:h-7 sm:w-7 md:h-10 md:w-10" src="src/assets/bus.png" alt="" />
-                </div>
-                <span className="text-foreground font-bold text-sm sm:text-base md:text-lg">Buseasily</span>
-              </div>
-              <p className="text-[10px] sm:text-xs md:text-sm text-muted-foreground">
-                Making college commute easier for students across India.
-              </p>
-            </div>
+      <footer className="border-t border-border py-8 sm:py-10 lg:py-12 mt-12 sm:mt-16">
+  <style>{`
+    @keyframes heartbeat {
+       }
+    }
+    .animate-heartbeat {
+      animation: heartbeat 1.2s ease-in-out infinite;
+    }
+    .footer-link {
+      transition: color 0.2s ease;
+    }
+    .footer-link:hover {
+      color: hsl(var(--primary));
+    }
+    .social-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 9999px;
+      padding: 0.5rem;
+      transition: all 0.2s ease;
+      background: hsl(var(--accent));
+    }
+    .social-icon:hover {
+      transform: translateY(-2px);
+      background: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+    }
+  `}</style>
 
-            {/* Quick Links */}
-            <div>
-              <h4 className="font-semibold text-foreground mb-2 sm:mb-3 text-xs sm:text-sm md:text-base">Quick Links</h4>
-              <ul className="space-y-1 sm:space-y-1.5 md:space-y-2 text-[10px] sm:text-xs md:text-sm text-muted-foreground">
-                <li>
-                  <Link to="/browse" className="hover:text-foreground hover:underline transition-colors">
-                    Browse Buses
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/gallery" className="hover:text-foreground hover:underline transition-colors flex items-center gap-1">
-                    <Camera className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                    Gallery
-                    <span className="text-[8px] sm:text-[10px] bg-primary/10 text-primary px-1 sm:px-1.5 py-0.5 rounded-full ml-0.5 sm:ml-1">New</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/auth" className="hover:text-foreground hover:underline transition-colors">
-                    Sign Up
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/dashboard" className="hover:text-foreground hover:underline transition-colors">
-                    My Bookings
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            {/* Support */}
-            <div>
-              <h4 className="font-semibold text-foreground mb-2 sm:mb-3 text-xs sm:text-sm md:text-base">Support</h4>
-              <ul className="space-y-1 sm:space-y-1.5 md:space-y-2 text-[10px] sm:text-xs md:text-sm text-muted-foreground">
-                <li>
-                  <Link
-                    to="/help"
-                    className="hover:text-foreground hover:underline transition-colors flex items-center gap-1"
-                  >
-                    <Heart className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                    Help Center
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/contact"
-                    className="hover:text-foreground hover:underline transition-colors flex items-center gap-1"
-                  >
-                    <MapPin className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                    Contact Us
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/terms"
-                    className="hover:text-foreground hover:underline transition-colors"
-                  >
-                    Terms of Service
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/privacy"
-                    className="hover:text-foreground hover:underline transition-colors"
-                  >
-                    Privacy Policy
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            {/* Social */}
-            <div className="col-span-2 md:col-span-1">
-              <h4 className="font-semibold text-foreground mb-2 sm:mb-3 text-xs sm:text-sm md:text-base">Connect</h4>
-              <div className="flex gap-2 sm:gap-3 text-muted-foreground">
-                <a
-                  href="https://www.linkedin.com/in/suraj-kumar-72847b30a/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="LinkedIn"
-                  className="p-1.5 sm:p-2 rounded-full bg-muted/50 hover:bg-muted hover:text-[#0A66C2] transition-all hover:-translate-y-0.5"
-                >
-                  <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M19 0h-14C2.2 0 0 2.2 0 5v14c0 2.8 2.2 5 5 5h14c2.8 0 5-2.2 5-5V5c0-2.8-2.2-5-5-5zm-11 19H5V9h3v10zm-1.5-11.5C6.1 7.5 5 6.4 5 5s1.1-2.5 2.5-2.5S10 3.6 10 5 8.9 7.5 7.5 7.5zM20 19h-3v-5.5c0-1.3-.5-2.1-1.7-2.1-0.9 0-1.4 0.6-1.6 1.2-.1.2-.1.5-.1.8V19h-3V9h3v1.4c.4-.6 1.1-1.5 2.7-1.5 2 0 3.6 1.3 3.6 4.2V19z" />
-                  </svg>
-                </a>
-
-                <a
-                  href="https://x.com/SuraJzRt"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="X (Twitter)"
-                  className="p-1.5 sm:p-2 rounded-full bg-muted/50 hover:bg-muted hover:text-black transition-all hover:-translate-y-0.5"
-                >
-                  <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M3 3h3l5.1 6.7L15.8 3H21l-6.7 8.7L21 21h-3l-5.1-6.8L8.2 21H3l6.8-9.3L3 3z" />
-                  </svg>
-                </a>
-
-                <a
-                  href="https://www.instagram.com/risu2948/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Instagram"
-                  className="p-1.5 sm:p-2 rounded-full bg-muted/50 hover:bg-muted hover:text-[#E4405F] transition-all hover:-translate-y-0.5"
-                >
-                  <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
-                  </svg>
-                </a>
-              </div>
-            </div>
+  <div className="container mx-auto px-4 sm:px-6">
+    {/* Main Grid */}
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12 mb-8">
+      
+      {/* Brand */}
+      <div className="col-span-2 lg:col-span-1">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="h-12 w-12 flex items-center justify-center  rounded-xl">
+            <img className="h-8 w-8" src="../../android-chrome-512x512.png" alt="Buseasily" />
           </div>
-
-          {/* Footer Bottom Links */}
-          <div className="border-t border-border pt-4 sm:pt-6 mt-4 sm:mt-6 md:mt-8">
-            <div className="flex flex-col gap-3 sm:gap-4 text-[10px] sm:text-xs md:text-sm text-muted-foreground">
-              <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 sm:gap-x-6 sm:gap-y-2 md:gap-8">
-                <Link
-                  to="/contact"
-                  className="hover:text-foreground hover:underline transition-colors"
-                >
-                  Contact Us
-                </Link>
-                <Link
-                  to="/about"
-                  className="hover:text-foreground hover:underline transition-colors"
-                >
-                  About Us
-                </Link>
-                <Link
-                  to="/privacy"
-                  className="hover:text-foreground hover:underline transition-colors"
-                >
-                  Privacy Policy
-                </Link>
-                <Link
-                  to="/terms"
-                  className="hover:text-foreground hover:underline transition-colors"
-                >
-                  Terms of Service
-                </Link>
-                <Link
-                  to="/help"
-                  className="hover:text-foreground hover:underline transition-colors"
-                >
-                  Help Center
-                </Link>
-              </div>
-              <div className="flex items-center justify-center gap-1 sm:gap-2">
-                <span>Made with</span>
-                <Heart className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-red-500 fill-red-500 animate-pulse" />
-                <span>by</span>
-                <a
-                  href="https://surajzxrt.netlify.app"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group hover:text-primary transition-colors flex items-center gap-0.5 sm:gap-1"
-                >
-                  <span>SuraJz</span>
-                  <ExternalLink className="h-2.5 w-2.5 sm:h-3 sm:w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </a>
-              </div>
-            </div>
-
-            {/* Copyright */}
-            <div className="text-center text-[8px] sm:text-[10px] md:text-xs text-muted-foreground mt-3 sm:mt-4">
-              <p>
-                &copy; {new Date().getFullYear()}{" "}
-                <a
-                  className="hover:text-foreground transition-colors"
-                  href="https://buseasily.netlify.app"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  buseasily
-                </a>
-                . All rights reserved.
-              </p>
-            </div>
+          <div>
+            <span className="text-foreground font-bold text-xl block">Buseasily</span>
+            <span className="text-xs text-primary">Bihar's #1 College Transport</span>
           </div>
         </div>
-      </footer>
+        <p className="text-sm text-muted-foreground mb-4 max-w-xs">
+          Making college commutes effortless for students across India.
+        </p>
+        
+        {/* Social Icons */}
+        <div className="flex gap-2">
+          <a href="https://www.linkedin.com/in/suraj-kumar-72847b30a/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="social-icon text-muted-foreground">
+            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+            </svg>
+          </a>
+          <a href="https://x.com/SuraJzRt" target="_blank" rel="noopener noreferrer" aria-label="X" className="social-icon text-muted-foreground">
+            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
+          </a>
+          <a href="https://www.instagram.com/risu2948/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="social-icon text-muted-foreground">
+            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+            </svg>
+          </a>
+          <a href="https://github.com" target="_blank" rel="noopener noreferrer" aria-label="GitHub" className="social-icon text-muted-foreground">
+            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+
+      {/* Links */}
+      <div>
+        <h4 className="font-semibold text-foreground mb-3 text-sm">Quick Links</h4>
+        <ul className="space-y-2 text-sm text-muted-foreground">
+          <li><Link to="/browse" className="footer-link">Browse Buses</Link></li>
+          <li><Link to="/gallery" className="footer-link">Gallery</Link></li>
+          <li><Link to="/auth" className="footer-link">Sign Up</Link></li>
+          <li><Link to="/dashboard" className="footer-link">My Bookings</Link></li>
+        </ul>
+      </div>
+
+      {/* Support */}
+      <div>
+        <h4 className="font-semibold text-foreground mb-3 text-sm">Support</h4>
+        <ul className="space-y-2 text-sm text-muted-foreground">
+          <li><Link to="/help" className="footer-link">Help Center</Link></li>
+          <li><Link to="/contact" className="footer-link">Contact Us</Link></li>
+          <li><Link to="/terms" className="footer-link">Terms</Link></li>
+          <li><Link to="/privacy" className="footer-link">Privacy</Link></li>
+        </ul>
+      </div>
+
+      {/* CTA */}
+      <div className="col-span-2 lg:col-span-1">
+        <h4 className="font-semibold text-foreground mb-3 text-sm">Get Started</h4>
+        <p className="text-sm text-muted-foreground mb-3">
+          Book your seat in seconds.
+        </p>
+        <Link to="/auth">
+          <Button className="w-full sm:w-auto gap-2">
+            <LogIn className="h-4 w-4" />
+            Book Now
+          </Button>
+        </Link>
+      </div>
+    </div>
+
+    {/* Bottom - Centered Layout */}
+    <div className="border-t border-border pt-6 flex flex-col items-center gap-3 text-sm text-muted-foreground">
+      {/* Copyright - Center */}
+      <p>
+        © {new Date().getFullYear()}{" "}
+        <a href="https://buseasily.netlify.app" target="_blank" rel="noopener noreferrer" className="footer-link font-medium">
+          Buseasily
+        </a>
+        . All rights reserved.
+      </p>
+      
+      {/* Made with love - Below Copyright */}
+      <div className="flex items-center gap-1.5">
+        <span>Made with</span>
+        <Heart className="h-3.5 w-3.5 animate-heartbeat text-red-500 fill-red-500 animate-bounce" />
+        <span>by</span>
+        <a 
+          href="https://surajzxrt.netlify.app" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="footer-link font-medium text-primary inline-flex items-center gap-1 group"
+        >
+          SuraJz
+          <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+        </a>
+      </div>
+    </div>
+  </div>
+</footer>
 
       {/* Add CSS for hiding scrollbar */}
       <style>{`

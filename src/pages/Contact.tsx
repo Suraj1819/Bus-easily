@@ -8,15 +8,15 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
-import { 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Send, 
-  MessageSquare, 
-  Clock, 
-  Shield, 
-  User, 
+import {
+  Mail,
+  Phone,
+  MapPin,
+  Send,
+  MessageSquare,
+  Clock,
+  Shield,
+  User,
   Building2,
   Calendar,
   HelpCircle,
@@ -27,8 +27,8 @@ import {
   Heart,
   Camera,
   ExternalLink,
-  ChevronRight,
-  LogIn // Import LogIn for the CTA button
+  Menu,
+  Home
 } from "lucide-react";
 
 const Contact = () => {
@@ -43,6 +43,7 @@ const Contact = () => {
     category: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Scroll to top on component mount
   useEffect(() => {
@@ -61,27 +62,27 @@ const Contact = () => {
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!formData.name.trim()) {
       newErrors.name = "Name is required";
     }
-    
+
     if (!formData.email.trim()) {
       newErrors.email = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = "Email is invalid";
     }
-    
+
     if (!formData.subject.trim()) {
       newErrors.subject = "Subject is required";
     }
-    
+
     if (!formData.message.trim()) {
       newErrors.message = "Message is required";
     } else if (formData.message.length < 10) {
       newErrors.message = "Message must be at least 10 characters";
     }
-    
+
     if (formData.phone && !/^[+]?[\d\s\-\(\)]{10,}$/.test(formData.phone)) {
       newErrors.phone = "Phone number is invalid";
     }
@@ -92,7 +93,7 @@ const Contact = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -122,23 +123,23 @@ const Contact = () => {
           duration: 5000,
         }
       );
-      
+
       // Reset form
-      setFormData({ 
-        name: "", 
-        email: "", 
-        phone: "", 
-        subject: "", 
-        message: "", 
-        category: "" 
+      setFormData({
+        name: "",
+        email: "",
+        phone: "",
+        subject: "",
+        message: "",
+        category: ""
       });
       setErrors({});
-      
+
       // Navigate to the thank you page after a successful message submission
       setTimeout(() => {
-        navigate("/thankyou", { state: { name: formData.name, email: formData.email, subject: formData.subject } }); 
-      }, 2000); // Delay navigation to allow toast to be seen
-      
+        navigate("/thankyou", { state: { name: formData.name, email: formData.email, subject: formData.subject } });
+      }, 2000);
+
     } catch (error: any) {
       toast.error(error.message || "Failed to send message", {
         icon: <AlertCircle className="h-4 w-4" />,
@@ -173,13 +174,72 @@ const Contact = () => {
       {/* Header */}
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="h-8 w-8 bg-white rounded-full flex items-center justify-center">
-              <Bus className="h-5 w-5 text-primary" />
-            </div>
-            <span className="font-bold text-xl bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">Buseasily</span>
+          {/* Logo and Mobile Back Button */}
+          <div className="flex items-center gap-4">
+            <Link to="/" className="flex items-center gap-2">
+              <img className="w-8 h-8 sm:w-10 sm:h-10" src="../../public/android-chrome-512x512.png" alt="Buseasily" />
+              <span className="text-lg sm:text-xl font-bold text-foreground">Buseasily</span>
+            </Link>
+
+            {/* Mobile Back Button */}
+            <Link
+              to="/"
+              className="md:hidden flex items-center gap-1 px-3 py-1.5 rounded-md bg-primary/10 hover:bg-primary/20 transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium text-primary">Home</span>
+            </Link>
+          </div>
+
+          {/* Desktop Home Button */}
+          <Link
+            to="/"
+            className="hidden md:flex items-center gap-1 px-3 py-1.5 rounded-md bg-primary/10 hover:bg-primary/20 transition-colors"
+          >
+            <Home className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium text-primary">Home</span>
           </Link>
+
+          {/* Mobile Menu Button */}
+          <button
+            className="md:hidden p-2 rounded-md bg-primary/10"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            <Menu className="h-5 w-5 text-primary" />
+          </button>
         </div>
+
+        {/* Mobile Menu (optional) */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden bg-background border-t border-border">
+            <div className="container mx-auto px-4 py-2 flex flex-col gap-2">
+              <Link
+                to="/"
+                className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-primary/5"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <Home className="h-4 w-4 text-primary" />
+                <span>Home</span>
+              </Link>
+              <Link
+                to="/browse"
+                className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-primary/5"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <Bus className="h-4 w-4 text-primary" />
+                <span>Browse Buses</span>
+              </Link>
+              <Link
+                to="/help"
+                className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-primary/5"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <HelpCircle className="h-4 w-4 text-primary" />
+                <span>Help Center</span>
+              </Link>
+            </div>
+          </div>
+        )}
       </header>
 
       <div className="container mx-auto px-4 py-8 sm:py-12">
@@ -194,7 +254,7 @@ const Contact = () => {
               Get in Touch With Us
             </h1>
             <p className="text-muted-foreground text-base sm:text-lg max-w-3xl mx-auto leading-relaxed">
-              Have questions about bus bookings, need assistance, or want to share feedback? 
+              Have questions about bus bookings, need assistance, or want to share feedback?
               Our team is ready to help you with prompt and personalized support.
             </p>
           </div>
@@ -417,9 +477,9 @@ const Contact = () => {
                     </div>
                   </div>
 
-                  <Button 
-                    type="submit" 
-                    size="lg" 
+                  <Button
+                    type="submit"
+                    size="lg"
                     className="w-full md:w-auto bg-gradient-to-r from-primary to-primary/80 hover:from-primary hover:to-primary/60 transition-all duration-300 transform hover:scale-105"
                     disabled={loading}
                   >
@@ -459,8 +519,8 @@ const Contact = () => {
                     </div>
                   ))}
                 </div>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full mt-4 border-primary/20 text-primary hover:bg-primary/5"
                   onClick={() => navigate("/help")}
                 >
@@ -477,8 +537,8 @@ const Contact = () => {
                 <p className="text-muted-foreground text-sm mb-4">
                   Chat with our support team in real-time during business hours.
                 </p>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full border-green-200 text-green-600 hover:bg-green-50"
                   onClick={() => toast.info("Live chat will be available soon!")}
                 >
@@ -493,19 +553,19 @@ const Contact = () => {
             <div className="bg-gradient-to-r from-primary/5 to-transparent border border-primary/20 rounded-2xl p-8">
               <h3 className="text-2xl font-bold mb-4">Still Need Help?</h3>
               <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
-                If you can't find what you're looking for or need immediate assistance, 
+                If you can't find what you're looking for or need immediate assistance,
                 don't hesitate to reach out. We're always here to help you with your travel needs.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button 
-                  size="lg" 
+                <Button
+                  size="lg"
                   className="bg-primary hover:bg-primary/90 text-white"
                   onClick={() => navigate("/help")}
                 >
                   Visit Help Center
                 </Button>
-                <Button 
-                  size="lg" 
+                <Button
+                  size="lg"
                   variant="outline"
                   onClick={() => navigate("/")}
                 >
@@ -517,272 +577,272 @@ const Contact = () => {
         </div>
       </div>
       <footer className="border-t border-border py-8 sm:py-10 lg:py-12 mt-12 sm:mt-16">
-              <style>{`
-                @keyframes heart-beat {
-                  0%, 100% { 
-                    transform: scale(1) rotate(0deg);
-                  }
-                  25% { 
-                    transform: scale(1.1) rotate(5deg);
-                  }
-                  50% { 
-                    transform: scale(1) rotate(0deg);
-                  }
-                  75% { 
-                    transform: scale(0.9) rotate(-5deg);
-                  }
-                }
-      
-                @keyframes heartbeat {
-                  0%, 100% { 
-                    transform: scale(1);
-                  }
-                  50% { 
-                    transform: scale(1.2);
-                  }
-                }
-      
-                @keyframes slide-in-from-top-2 {
-                  from {
-                    opacity: 0;
-                    transform: translateY(-10px);
-                  }
-                  to {
-                    opacity: 1;
-                    transform: translateY(0);
-                  }
-                }
-      
-                .heart-bounce {
-                  display: inline-block;
-                  animation: heart-beat 2s ease-in-out infinite;
-                }
-      
-                .animate-heartbeat {
-                  animation: heartbeat 1.5s ease-in-out infinite;
-                }
-      
-                .social-icon {
-                  display: inline-flex;
-                  align-items: center;
-                  justify-content: center;
-                  border-radius: 9999px;
-                  padding: 0.5rem;
-                  transition:
-                    transform 0.2s ease,
-                    box-shadow 0.2s ease,
-                    background-color 0.2s ease,
-                    color 0.2s ease;
-                  background: rgba(148, 163, 184, 0.08);
-                }
-      
-                .social-icon:hover {
-                  transform: translateY(-2px) scale(1.08);
-                  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.18);
-                }
-      
-                .animate-in {
-                  animation: slide-in-from-top-2 0.3s ease-out;
-                }
-              `}</style>
-      
-              <div className="container mx-auto px-4">
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-8">
-                  {/* Brand */}
-                  <div className="col-span-2 lg:col-span-1">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="h-10 w-10 sm:h-14 sm:w-14 flex items-center justify-center bg-primary/10 rounded-full">
-                        <img className="h-7 w-7 sm:h-10 sm:w-10" src="src/assets/bus.png" alt="" />
-                      </div>
-                      <span className="text-foreground font-bold text-base sm:text-lg">Buseasily</span>
-                    </div>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
-                      Making college commute easier for students across India.
-                    </p>
-                  </div>
-      
-                  {/* Quick Links */}
-                  <div>
-                    <h4 className="font-semibold text-foreground mb-2 sm:mb-3 text-sm sm:text-base">Quick Links</h4>
-                    <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-muted-foreground">
-                      <li>
-                        <Link to="/browse" className="hover:text-foreground hover:underline transition-colors">
-                          Browse Buses
-                        </Link>
-                      </li>
-                      <li>
-                        <Link to="/gallery" className="hover:text-foreground hover:underline transition-colors flex items-center gap-1">
-                          <Camera className="h-3 w-3" />
-                          Gallery
-                          <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full ml-1">New</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link to="/auth" className="hover:text-foreground hover:underline transition-colors">
-                          Sign Up
-                        </Link>
-                      </li>
-                      <li>
-                        <Link to="/dashboard" className="hover:text-foreground hover:underline transition-colors">
-                          My Bookings
-                        </Link>
-                      </li>
-                    </ul>
-                  </div>
-      
-                  {/* Support */}
-                  <div>
-                    <h4 className="font-semibold text-foreground mb-2 sm:mb-3 text-sm sm:text-base">Support</h4>
-                    <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-muted-foreground">
-                      <li>
-                        <Link 
-                          to="/help" 
-                          className="hover:text-foreground hover:underline transition-colors flex items-center gap-1"
-                        >
-                          <Heart className="h-3 w-3" />
-                          Help Center
-                        </Link>
-                      </li>
-                      <li>
-                        <Link 
-                          to="/contact" 
-                          className="hover:text-foreground hover:underline transition-colors flex items-center gap-1"
-                        >
-                          <MapPin className="h-3 w-3" />
-                          Contact Us
-                        </Link>
-                      </li>
-                      <li>
-                        <Link 
-                          to="/terms" 
-                          className="hover:text-foreground hover:underline transition-colors"
-                        >
-                          Terms of Service
-                        </Link>
-                      </li>
-                      <li>
-                        <Link 
-                          to="/privacy" 
-                          className="hover:text-foreground hover:underline transition-colors"
-                        >
-                          Privacy Policy
-                        </Link>
-                      </li>
-                    </ul>
-                  </div>
-      
-                  {/* Social */}
-                  <div className="col-span-2 lg:col-span-1">
-                    <h4 className="font-semibold text-foreground mb-2 sm:mb-3 text-sm sm:text-base">Connect</h4>
-                    <div className="flex gap-3 text-muted-foreground">
-                      <a
-                        href="https://www.linkedin.com/in/suraj-kumar-72847b30a/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label="LinkedIn"
-                        className="social-icon hover:text-[#0A66C2]"
-                      >
-                        <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M19 0h-14C2.2 0 0 2.2 0 5v14c0 2.8 2.2 5 5 5h14c2.8 0 5-2.2 5-5V5c0-2.8-2.2-5-5-5zm-11 19H5V9h3v10zm-1.5-11.5C6.1 7.5 5 6.4 5 5s1.1-2.5 2.5-2.5S10 3.6 10 5 8.9 7.5 7.5 7.5zM20 19h-3v-5.5c0-1.3-.5-2.1-1.7-2.1-0.9 0-1.4 0.6-1.6 1.2-.1.2-.1.5-.1.8V19h-3V9h3v1.4c.4-.6 1.1-1.5 2.7-1.5 2 0 3.6 1.3 3.6 4.2V19z" />
-                        </svg>
-                      </a>
-      
-                      <a
-                        href="https://x.com/SuraJzRt"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label="X (Twitter)"
-                        className="social-icon hover:text-black"
-                      >
-                        <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M3 3h3l5.1 6.7L15.8 3H21l-6.7 8.7L21 21h-3l-5.1-6.8L8.2 21H3l6.8-9.3L3 3z" />
-                        </svg>
-                      </a>
-      
-                      <a
-                        href="https://www.instagram.com/risu2948/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label="Instagram"
-                        className="social-icon hover:text-[#E4405F]"
-                      >
-                        <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-                        </svg>
-                      </a>
-                    </div>
-                  </div>
+        <style>{`
+          @keyframes heart-beat {
+            0%, 100% {
+              transform: scale(1) rotate(0deg);
+            }
+            25% {
+              transform: scale(1.1) rotate(5deg);
+            }
+            50% {
+              transform: scale(1) rotate(0deg);
+            }
+            75% {
+              transform: scale(0.9) rotate(-5deg);
+            }
+          }
+
+          @keyframes heartbeat {
+            0%, 100% {
+              transform: scale(1);
+            }
+            50% {
+              transform: scale(1.2);
+            }
+          }
+
+          @keyframes slide-in-from-top-2 {
+            from {
+              opacity: 0;
+              transform: translateY(-10px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
+          .heart-bounce {
+            display: inline-block;
+            animation: heart-beat 2s ease-in-out infinite;
+          }
+
+          .animate-heartbeat {
+            animation: heartbeat 1.5s ease-in-out infinite;
+          }
+
+          .social-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9999px;
+            padding: 0.5rem;
+            transition:
+              transform 0.2s ease,
+              box-shadow 0.2s ease,
+              background-color 0.2s ease,
+              color 0.2s ease;
+            background: rgba(148, 163, 184, 0.08);
+          }
+
+          .social-icon:hover {
+            transform: translateY(-2px) scale(1.08);
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.18);
+          }
+
+          .animate-in {
+            animation: slide-in-from-top-2 0.3s ease-out;
+          }
+        `}</style>
+
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-8">
+            {/* Brand */}
+            <div className="col-span-2 lg:col-span-1">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="h-10 w-10 sm:h-14 sm:w-14 flex items-center justify-center bg-primary/10 rounded-full">
+                  <img className="h-7 w-7 sm:h-10 sm:w-10" src="src/assets/bus.png" alt="" />
                 </div>
-      
-                {/* Footer Bottom Links */}
-                <div className="border-t border-border pt-6 mt-8">
-                  <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-xs sm:text-sm text-muted-foreground">
-                    <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 text-center sm:text-left">
-                      <Link 
-                        to="/contact" 
-                        className="hover:text-foreground hover:underline transition-colors"
-                      >
-                        Contact Us
-                      </Link>
-                      <Link 
-                        to="/about" 
-                        className="hover:text-foreground hover:underline transition-colors"
-                      >
-                        About Us
-                      </Link>
-                      <Link 
-                        to="/privacy" 
-                        className="hover:text-foreground hover:underline transition-colors"
-                      >
-                        Privacy Policy
-                      </Link>
-                      <Link 
-                        to="/terms" 
-                        className="hover:text-foreground hover:underline transition-colors"
-                      >
-                        Terms of Service
-                      </Link>
-                      <Link 
-                        to="/help" 
-                        className="hover:text-foreground hover:underline transition-colors"
-                      >
-                        Help Center
-                      </Link>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span>Made with</span>
-                      <Heart className="h-3 w-3 animate-heartbeat text-red-500 fill-[#ef4444]" />
-                      <span>by</span>
-                      <a
-                        href="https://surajzxrt.netlify.app"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group hover:text-primary transition-colors flex items-center gap-1 relative"
-                      >
-                        <span>SuraJz</span>
-                        <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity absolute -right-4 top-1/2 -translate-y-1/2" />
-                      </a>
-                    </div>
-                  </div>
-                  
-                  {/* Copyright */}
-                  <div className="text-center text-[10px] sm:text-xs text-muted-foreground mt-4">
-                    <p>
-                      &copy; {new Date().getFullYear()}{" "}
-                      <a
-                        className="hover:text-foreground transition-colors"
-                        href="https://buseasily.netlify.app"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        buseasily
-                      </a>
-                      . All rights reserved.
-                    </p>
-                  </div>
-                </div>
+                <span className="text-foreground font-bold text-base sm:text-lg">Buseasily</span>
               </div>
-            </footer>
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                Making college commute easier for students across India.
+              </p>
+            </div>
+
+            {/* Quick Links */}
+            <div>
+              <h4 className="font-semibold text-foreground mb-2 sm:mb-3 text-sm sm:text-base">Quick Links</h4>
+              <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-muted-foreground">
+                <li>
+                  <Link to="/browse" className="hover:text-foreground hover:underline transition-colors">
+                    Browse Buses
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/gallery" className="hover:text-foreground hover:underline transition-colors flex items-center gap-1">
+                    <Camera className="h-3 w-3" />
+                    Gallery
+                    <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full ml-1">New</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/auth" className="hover:text-foreground hover:underline transition-colors">
+                    Sign Up
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/dashboard" className="hover:text-foreground hover:underline transition-colors">
+                    My Bookings
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Support */}
+            <div>
+              <h4 className="font-semibold text-foreground mb-2 sm:mb-3 text-sm sm:text-base">Support</h4>
+              <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-muted-foreground">
+                <li>
+                  <Link
+                    to="/help"
+                    className="hover:text-foreground hover:underline transition-colors flex items-center gap-1"
+                  >
+                    <Heart className="h-3 w-3" />
+                    Help Center
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/contact"
+                    className="hover:text-foreground hover:underline transition-colors flex items-center gap-1"
+                  >
+                    <MapPin className="h-3 w-3" />
+                    Contact Us
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/terms"
+                    className="hover:text-foreground hover:underline transition-colors"
+                  >
+                    Terms of Service
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/privacy"
+                    className="hover:text-foreground hover:underline transition-colors"
+                  >
+                    Privacy Policy
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Social */}
+            <div className="col-span-2 lg:col-span-1">
+              <h4 className="font-semibold text-foreground mb-2 sm:mb-3 text-sm sm:text-base">Connect</h4>
+              <div className="flex gap-3 text-muted-foreground">
+                <a
+                  href="https://www.linkedin.com/in/suraj-kumar-72847b30a/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="LinkedIn"
+                  className="social-icon hover:text-[#0A66C2]"
+                >
+                  <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19 0h-14C2.2 0 0 2.2 0 5v14c0 2.8 2.2 5 5 5h14c2.8 0 5-2.2 5-5V5c0-2.8-2.2-5-5-5zm-11 19H5V9h3v10zm-1.5-11.5C6.1 7.5 5 6.4 5 5s1.1-2.5 2.5-2.5S10 3.6 10 5 8.9 7.5 7.5 7.5zM20 19h-3v-5.5c0-1.3-.5-2.1-1.7-2.1-0.9 0-1.4 0.6-1.6 1.2-.1.2-.1.5-.1.8V19h-3V9h3v1.4c.4-.6 1.1-1.5 2.7-1.5 2 0 3.6 1.3 3.6 4.2V19z" />
+                  </svg>
+                </a>
+
+                <a
+                  href="https://x.com/SuraJzRt"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="X (Twitter)"
+                  className="social-icon hover:text-black"
+                >
+                  <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M3 3h3l5.1 6.7L15.8 3H21l-6.7 8.7L21 21h-3l-5.1-6.8L8.2 21H3l6.8-9.3L3 3z" />
+                  </svg>
+                </a>
+
+                <a
+                  href="https://www.instagram.com/risu2948/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Instagram"
+                  className="social-icon hover:text-[#E4405F]"
+                >
+                  <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                  </svg>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Bottom Links */}
+          <div className="border-t border-border pt-6 mt-8">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-xs sm:text-sm text-muted-foreground">
+              <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 text-center sm:text-left">
+                <Link
+                  to="/contact"
+                  className="hover:text-foreground hover:underline transition-colors"
+                >
+                  Contact Us
+                </Link>
+                <Link
+                  to="/about"
+                  className="hover:text-foreground hover:underline transition-colors"
+                >
+                  About Us
+                </Link>
+                <Link
+                  to="/privacy"
+                  className="hover:text-foreground hover:underline transition-colors"
+                >
+                  Privacy Policy
+                </Link>
+                <Link
+                  to="/terms"
+                  className="hover:text-foreground hover:underline transition-colors"
+                >
+                  Terms of Service
+                </Link>
+                <Link
+                  to="/help"
+                  className="hover:text-foreground hover:underline transition-colors"
+                >
+                  Help Center
+                </Link>
+              </div>
+              <div className="flex items-center gap-2">
+                <span>Made with</span>
+                <Heart className="h-3 w-3 animate-heartbeat text-red-500 fill-[#ef4444]" />
+                <span>by</span>
+                <a
+                  href="https://surajzxrt.netlify.app"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group hover:text-primary transition-colors flex items-center gap-1 relative"
+                >
+                  <span>SuraJz</span>
+                  <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity absolute -right-4 top-1/2 -translate-y-1/2" />
+                </a>
+              </div>
+            </div>
+
+            {/* Copyright */}
+            <div className="text-center text-[10px] sm:text-xs text-muted-foreground mt-4">
+              <p>
+                &copy; {new Date().getFullYear()}{" "}
+                <a
+                  className="hover:text-foreground transition-colors"
+                  href="https://buseasily.netlify.app"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  buseasily
+                </a>
+                . All rights reserved.
+              </p>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

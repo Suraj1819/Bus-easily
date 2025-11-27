@@ -42,7 +42,7 @@ const Index = () => {
           <div className="flex items-center justify-between">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2">
-              <img className="w-8 h-8 sm:w-10 sm:h-10" src="src/assets/bus.png" alt="Buseasily" />
+              <img className="w-8 h-8 sm:w-10 sm:h-10" src="../../public/android-chrome-512x512.png" alt="Buseasily" />
               <span className="text-lg sm:text-xl font-bold text-foreground">Buseasily</span>
             </Link>
 
@@ -462,8 +462,7 @@ const Index = () => {
       <footer className="border-t border-border py-8 sm:py-10 lg:py-12 mt-12 sm:mt-16">
   <style>{`
     @keyframes heartbeat {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.2); }
+       }
     }
     .animate-heartbeat {
       animation: heartbeat 1.2s ease-in-out infinite;
@@ -497,12 +496,12 @@ const Index = () => {
       {/* Brand */}
       <div className="col-span-2 lg:col-span-1">
         <div className="flex items-center gap-3 mb-4">
-          <div className="h-12 w-12 flex items-center justify-center bg-primary/10 rounded-xl">
-            <img className="h-8 w-8" src="src/assets/bus.png" alt="Buseasily" />
+          <div className="h-12 w-12 flex items-center justify-center  rounded-xl">
+            <img className="h-8 w-8" src="../../public/android-chrome-512x512.png" alt="Buseasily" />
           </div>
           <div>
             <span className="text-foreground font-bold text-xl block">Buseasily</span>
-            <span className="text-xs text-primary">Bihar's #1 Transport</span>
+            <span className="text-xs text-primary">Bihar's #1 College Transport</span>
           </div>
         </div>
         <p className="text-sm text-muted-foreground mb-4 max-w-xs">
@@ -585,7 +584,7 @@ const Index = () => {
       {/* Made with love - Below Copyright */}
       <div className="flex items-center gap-1.5">
         <span>Made with</span>
-        <Heart className="h-3.5 w-3.5 animate-heartbeat text-red-500 fill-red-500" />
+        <Heart className="h-3.5 w-3.5 animate-heartbeat text-red-500 fill-red-500 animate-bounce" />
         <span>by</span>
         <a 
           href="https://surajzxrt.netlify.app" 

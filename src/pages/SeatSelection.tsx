@@ -37,6 +37,7 @@ interface Seat {
   locked_until: string | null;
   bus_id?: string;
 }
+
 interface BusData {
   id: string;
   bus_number: string;
@@ -45,13 +46,8 @@ interface BusData {
   total_seats: number;
   departure_time?: string | null;
   arrival_time?: string | null;
-  // If you want, you can also add these here for typing,
-  // but we’re accessing via "as any" to keep it flexible:
-  // driver_name?: string | null;
-  // driver_phone?: string | null;
-  // conductor_name?: string | null;
-  // conductor_phone?: string | null;
 }
+
 interface Booking {
   id: string;
   bus_id: string;
@@ -61,7 +57,9 @@ interface Booking {
   status: string;
   booked_at: string;
 }
+
 type NotificationKind = "success" | "error" | "info";
+
 interface NotificationItem {
   id: number;
   kind: NotificationKind;
@@ -94,6 +92,7 @@ const normalizeSeatRecord = (seatLike: any): Seat => {
   }
   return seatLike as Seat;
 };
+
 const sortSeats = (seatList: Seat[]) =>
   seatList.slice().sort((a, b) =>
     a.row_number === b.row_number
@@ -112,8 +111,6 @@ const SeatSelection = () => {
   const [userId, setUserId] = useState<string>("");
   const [bookingDetailsOpen, setBookingDetailsOpen] = useState<boolean>(false);
   const [selectedBookingDetails, setSelectedBookingDetails] = useState<any>(null);
-
-  // ---- tickets drawer/modal states ----
   const [viewTicketsOpen, setViewTicketsOpen] = useState<boolean>(false);
   const [userBookings, setUserBookings] = useState<Booking[]>([]);
   const [loadingTickets, setLoadingTickets] = useState<boolean>(false);
@@ -122,13 +119,9 @@ const SeatSelection = () => {
   const [actionMenuOpen, setActionMenuOpen] = useState<boolean>(false);
   const [driverDetailsOpen, setDriverDetailsOpen] = useState<boolean>(false);
   const [bookedBy, setBookedBy] = useState<{ [key: string]: string }>({});
-
-  // ---- New Status Popup State ----
   const [statusPopupOpen, setStatusPopupOpen] = useState<boolean>(false);
   const [statusPopupType, setStatusPopupType] = useState<"locked" | "booked">("locked");
   const [statusPopupSeat, setStatusPopupSeat] = useState<Seat | null>(null);
-
-  // ---- NEW: driver & conductor state ----
   const [driver, setDriver] = useState<DriverInfo | null>(null);
   const [conductor, setConductor] = useState<ConductorInfo | null>(null);
 
@@ -144,7 +137,6 @@ const SeatSelection = () => {
   useEffect(() => {
     checkAuth();
     fetchBusAndSeats();
-    // eslint-disable-next-line
   }, [busId]);
 
   useEffect(() => {
@@ -159,7 +151,6 @@ const SeatSelection = () => {
     if (expired.length) {
       releaseExpiredSeatLocks(expired.map((seat) => seat.id));
     }
-    // eslint-disable-next-line
   }, [seats]);
 
   // Realtime seat changes
@@ -231,7 +222,7 @@ const SeatSelection = () => {
     };
   }, [busId]);
 
-  // OPTIONAL: Realtime bus updates (driver / conductor changes)
+  // Realtime bus updates
   useEffect(() => {
     if (!busId) return;
 
@@ -304,7 +295,6 @@ const SeatSelection = () => {
 
       setBus(busData as BusData);
 
-      // NEW: set driver & conductor from busData
       setDriver({
         name: (busData as any).driver_name ?? null,
         phone: (busData as any).driver_phone ?? null,
@@ -381,7 +371,6 @@ const SeatSelection = () => {
     }
   };
 
-  // Keep this function for when the Current User clicks their OWN booking
   const fetchBookingDetails = async (seatId: string) => {
     try {
       const { data, error } = await supabase
@@ -434,13 +423,10 @@ const SeatSelection = () => {
 
   /* ------------------------------ Seat Actions ------------------------------ */
   const handleSeatClick = (seat: Seat) => {
-    // 1. Handle BOOKED seats
     if (seat.status === "booked") {
-      // If current user booked it -> Show detailed info
       if (bookedBy[seat.id] === userId) {
         fetchBookingDetails(seat.id);
       } else {
-        // If someone else booked it -> Show the "Seat Booked" popup
         setStatusPopupSeat(seat);
         setStatusPopupType("booked");
         setStatusPopupOpen(true);
@@ -453,7 +439,6 @@ const SeatSelection = () => {
       seat.locked_until &&
       new Date(seat.locked_until) <= new Date();
 
-    // 2. Handle LOCKED seats (by others)
     if (seat.status === "locked" && !isExpiredLock && seat.locked_by !== userId) {
       setStatusPopupSeat(seat);
       setStatusPopupType("locked");
@@ -466,7 +451,6 @@ const SeatSelection = () => {
       return;
     }
 
-    // 3. Available or Locked by Me -> Open Action Menu
     setActionSeat(seat);
     setActionMenuOpen(true);
   };
@@ -608,6 +592,7 @@ const SeatSelection = () => {
       setLoadingTickets(false);
     }
   };
+
   const handleOpenTickets = async () => {
     setViewTicketsOpen(true);
     await fetchUserBookings();
@@ -697,7 +682,7 @@ const SeatSelection = () => {
         />
       )}
 
-      {/* NEW: Status Popup (For Locked/Booked by Others) */}
+      {/* Status Popup (For Locked/Booked by Others) */}
       {statusPopupOpen && statusPopupSeat && (
         <SeatStatusPopup
           open={statusPopupOpen}
@@ -707,9 +692,9 @@ const SeatSelection = () => {
         />
       )}
 
-      {/* Driver & Conductor Details Modal (UPDATED) */}
+      {/* Driver & Conductor Details Modal */}
       {driverDetailsOpen && (
-        <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+        <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <Card className="w-full max-w-sm border-border bg-card/95">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border/60">
               <div className="flex items-center gap-2">
@@ -817,38 +802,38 @@ const SeatSelection = () => {
 
       {/* NAVBAR */}
       <nav className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-4 w-full sm:w-auto justify-between">
+        <div className="container mx-auto px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-between">
             <Button
               variant="ghost"
               onClick={() => navigate("/browse")}
               className="px-2 flex items-center gap-1"
             >
               <ArrowLeft className="h-4 w-4" />
-              <span className="text-sm hidden xs:inline">Back</span>
+              <span className="text-sm">Back</span>
             </Button>
-            <div className="flex items-center gap-3 flex-1 sm:flex-initial">
-              <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                <Bus className="h-6 w-6 text-primary-foreground" />
+            <div className="flex items-center gap-2 flex-1 sm:flex-initial min-w-0">
+              <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                <Bus className="h-4 w-4 text-primary-foreground" />
               </div>
               <div className="min-w-0 flex-1">
-                <span className="text-sm sm:text-lg font-bold text-foreground block truncate">
+                <span className="text-sm font-bold text-foreground block truncate">
                   {bus?.bus_number}
                 </span>
-                <span className="text-[11px] sm:text-xs text-muted-foreground truncate">
+                <span className="text-[10px] text-muted-foreground truncate block">
                   {bus?.route}
                 </span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2 text-[11px] sm:text-xs text-muted-foreground w-full sm:w-auto justify-end">
-            <span className="px-3 py-1 rounded-full bg-accent/60 border border-border">
+          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground w-full sm:w-auto justify-end flex-wrap">
+            <span className="px-2 py-0.5 rounded-full bg-accent/60 border border-border">
               Total: <strong>{bus?.total_seats ?? "-"}</strong>
             </span>
-            <span className="px-3 py-1 rounded-full bg-accent/60 border border-border">
+            <span className="px-2 py-0.5 rounded-full bg-accent/60 border border-border">
               Available: <strong>{availableSeatsCount}</strong>
             </span>
-            <span className="px-3 py-1 rounded-full bg-accent/60 border border-border">
+            <span className="px-2 py-0.5 rounded-full bg-accent/60 border border-border">
               Booked: <strong>{bookedSeatsCount}</strong>
             </span>
           </div>
@@ -857,7 +842,7 @@ const SeatSelection = () => {
 
       {/* MAIN CONTENT */}
       <div className="container mx-auto px-4 py-6 lg:py-8">
-        <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
+        <div className="grid lg:grid-cols-3 gap-4 lg:gap-6">
           {/* LEFT: Seat Selection */}
           <div className="lg:col-span-2">
             <Card className="p-4 sm:p-6 border-border">
@@ -875,7 +860,7 @@ const SeatSelection = () => {
                   className="gap-2 self-start sm:self-center text-[11px] sm:text-xs"
                 >
                   <Info className="h-3 w-3" />
-                  Booked seats still show who’s travelling
+                  Booked seats still show who's travelling
                 </Badge>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4 sm:mb-6 text-xs sm:text-sm">
@@ -913,19 +898,19 @@ const SeatSelection = () => {
                   </span>
                 </button>
               </div>
-              <div className="bg-gradient-to-b from-accent/20 to-transparent p-4 sm:p-6 rounded-xl overflow-x-auto">
-                <div className="flex flex-col gap-3 min-w-[260px] sm:min-w-[340px] mx-auto">
+              <div className="bg-gradient-to-b from-accent/20 to-transparent p-3 sm:p-6 rounded-xl overflow-x-auto">
+                <div className="flex flex-col gap-2 min-w-[240px] sm:min-w-[340px] mx-auto">
                   {normalRows.map((row) => (
                     <div
                       key={row}
-                      className="flex items-center justify-center gap-4 sm:gap-6"
+                      className="flex items-center justify-center gap-3 sm:gap-6"
                     >
-                      <span className="w-6 text-[10px] sm:text-xs font-semibold text-muted-foreground text-center bg-accent px-2 py-1 rounded">
+                      <span className="w-5 sm:w-6 text-[10px] sm:text-xs font-semibold text-muted-foreground text-center bg-accent px-1 sm:px-2 py-0.5 sm:py-1 rounded">
                         {row}
                       </span>
-                      <div className="flex gap-4 sm:gap-6 items-center">
+                      <div className="flex gap-3 sm:gap-6 items-center">
                         {/* Left pair */}
-                        <div className="flex gap-2 sm:gap-3">
+                        <div className="flex gap-1.5 sm:gap-3">
                           {[1, 2].map((col) => {
                             const seat = seats.find(
                               (s) =>
@@ -936,7 +921,7 @@ const SeatSelection = () => {
                                 key={seat.id}
                                 onClick={() => handleSeatClick(seat)}
                                 className={cn(
-                                  "w-10 h-10 sm:w-14 sm:h-14 rounded-lg border-2 flex items-center justify-center text-[11px] sm:text-xs font-bold transition-all shadow-sm hover:shadow-md hover:scale-105",
+                                  "w-8 h-8 sm:w-12 sm:h-12 rounded-lg border-2 flex items-center justify-center text-[10px] sm:text-xs font-bold transition-all shadow-sm hover:shadow-md hover:scale-105",
                                   getSeatColor(seat),
                                   selectedSeats.includes(seat.id)
                                     ? "ring-2 ring-primary/40"
@@ -948,14 +933,14 @@ const SeatSelection = () => {
                             ) : (
                               <div
                                 key={`${row}-${col}`}
-                                className="w-10 h-10 sm:w-14 sm:h-14"
+                                className="w-8 h-8 sm:w-12 sm:h-12"
                               />
                             );
                           })}
                         </div>
                         {/* Aisle */}
-                        <div className="w-6 sm:w-10 border-l-2 border-dashed border-border/40 h-full" />
-                        <div className="flex gap-2 sm:gap-3">
+                        <div className="w-4 sm:w-8 border-l-2 border-dashed border-border/40 h-full" />
+                        <div className="flex gap-1.5 sm:gap-3">
                           {[3, 4].map((col) => {
                             const seat = seats.find(
                               (s) =>
@@ -966,7 +951,7 @@ const SeatSelection = () => {
                                 key={seat.id}
                                 onClick={() => handleSeatClick(seat)}
                                 className={cn(
-                                  "w-10 h-10 sm:w-14 sm:h-14 rounded-lg border-2 flex items-center justify-center text-[11px] sm:text-xs font-bold transition-all shadow-sm hover:shadow-md hover:scale-105",
+                                  "w-8 h-8 sm:w-12 sm:h-12 rounded-lg border-2 flex items-center justify-center text-[10px] sm:text-xs font-bold transition-all shadow-sm hover:shadow-md hover:scale-105",
                                   getSeatColor(seat),
                                   selectedSeats.includes(seat.id)
                                     ? "ring-2 ring-primary/40"
@@ -978,7 +963,7 @@ const SeatSelection = () => {
                             ) : (
                               <div
                                 key={`${row}-${col}`}
-                                className="w-10 h-10 sm:w-14 sm:h-14"
+                                className="w-8 h-8 sm:w-12 sm:h-12"
                               />
                             );
                           })}
@@ -988,11 +973,11 @@ const SeatSelection = () => {
                   ))}
                   {/* Last row – 5 seats */}
                   {maxRow > 0 && (
-                    <div className="flex items-center justify-center gap-4 sm:gap-6">
-                      <span className="w-6 text-[10px] sm:text-xs font-semibold text-muted-foreground text-center bg-accent px-2 py-1 rounded">
+                    <div className="flex items-center justify-center gap-3 sm:gap-6">
+                      <span className="w-5 sm:w-6 text-[10px] sm:text-xs font-semibold text-muted-foreground text-center bg-accent px-1 sm:px-2 py-0.5 sm:py-1 rounded">
                         {maxRow}
                       </span>
-                      <div className="flex gap-2 sm:gap-3">
+                      <div className="flex gap-1.5 sm:gap-3">
                         {[1, 2, 3, 4, 5].map((col) => {
                           const seat = seats.find(
                             (s) =>
@@ -1004,7 +989,7 @@ const SeatSelection = () => {
                               key={seat.id}
                               onClick={() => handleSeatClick(seat)}
                               className={cn(
-                                "w-10 h-10 sm:w-14 sm:h-14 rounded-lg border-2 flex items-center justify-center text-[11px] sm:text-xs font-bold transition-all shadow-sm hover:shadow-md hover:scale-105",
+                                "w-8 h-8 sm:w-12 sm:h-12 rounded-lg border-2 flex items-center justify-center text-[10px] sm:text-xs font-bold transition-all shadow-sm hover:shadow-md hover:scale-105",
                                 getSeatColor(seat),
                                 selectedSeats.includes(seat.id)
                                   ? "ring-2 ring-primary/40"
@@ -1016,7 +1001,7 @@ const SeatSelection = () => {
                           ) : (
                             <div
                               key={`${maxRow}-${col}`}
-                              className="w-10 h-10 sm:w-14 sm:h-14"
+                              className="w-8 h-8 sm:w-12 sm:h-12"
                             />
                           );
                         })}
@@ -1027,250 +1012,246 @@ const SeatSelection = () => {
               </div>
             </Card>
           </div>
-{/* RIGHT: Booking Summary */}
-<div className="lg:col-span-1 mt-6 lg:mt-0 lg:relative">
-  <div className="lg:sticky lg:top-[100px]">
-    <Card className="p-4 sm:p-5 lg:p-6 border-border/80 shadow-lg space-y-4 h-fit bg-gradient-to-b from-card to-accent/30">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 mb-1">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-            <IndianRupee className="h-4 w-4 text-primary" />
-          </div>
-          <div className="flex flex-col">
-            <h3 className="text-base sm:text-lg font-bold text-foreground leading-tight">
-              Booking Summary
-            </h3>
-            <span className="text-[10px] sm:text-[11px] text-muted-foreground">
-              Review your bus, selected & locked seats
-            </span>
-          </div>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1 text-[11px] sm:text-xs rounded-full"
-          onClick={handleOpenTickets}
-        >
-          <TicketIcon className="h-3 w-3" />
-          <span className="hidden sm:inline">View Tickets</span>
-          <span className="sm:hidden">Tickets</span>
-        </Button>
-      </div>
 
-      {/* Bus Info */}
-      <div className="rounded-xl border border-border/60 bg-background/70 p-3 sm:p-4 space-y-1">
-        <p className="text-[10px] sm:text-[11px] text-muted-foreground uppercase tracking-wide">
-          Bus
-        </p>
-        <p className="font-semibold text-foreground text-sm sm:text-base">
-          {bus?.bus_number ?? "—"}{" "}
-          {bus?.route && (
-            <span className="text-xs sm:text-sm text-muted-foreground">
-              • {bus.route}
-            </span>
-          )}
-        </p>
-        <div className="flex flex-wrap gap-2 mt-2 text-[10px] sm:text-[11px] text-muted-foreground">
-          <span className="px-2 py-0.5 rounded-full bg-accent/60 border border-border/70">
-            Total: <strong>{bus?.total_seats ?? "-"}</strong>
-          </span>
-          <span className="px-2 py-0.5 rounded-full bg-accent/60 border border-border/70">
-            Available: <strong>{availableSeatsCount}</strong>
-          </span>
-          {/* <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/40 text-emerald-600">
-            Booked by You: <strong>{bookedSeatsCount}</strong>
-          </span> */}
-        </div>
-      </div>
+          {/* RIGHT: Booking Summary */}
+          <div className="lg:col-span-1 mt-4 lg:mt-0">
+            <div className="lg:sticky lg:top-[80px]">
+              <Card className="p-3 sm:p-4 lg:p-5 border-border/80 shadow-lg space-y-3 h-fit bg-gradient-to-b from-card to-accent/30">
+                {/* Header */}
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center">
+                      <IndianRupee className="h-3.5 w-3.5 text-primary" />
+                    </div>
+                    <div className="flex flex-col">
+                      <h3 className="text-sm sm:text-base font-bold text-foreground leading-tight">
+                        Booking Summary
+                      </h3>
+                      <span className="text-[10px] text-muted-foreground">
+                        Review your bus, selected & locked seats
+                      </span>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1 text-[10px] sm:text-xs rounded-full px-2 py-1 h-7"
+                    onClick={handleOpenTickets}
+                  >
+                    <TicketIcon className="h-3 w-3" />
+                    <span className="hidden sm:inline">Tickets</span>
+                  </Button>
+                </div>
 
-      {/* Selected Seats */}
-      <div className="rounded-xl border border-border/60 bg-background/70 p-3 sm:p-4 space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[10px] sm:text-[11px] text-muted-foreground uppercase tracking-wide">
-            Selected Seats
-          </p>
-          {currentSeatIds.length > 0 && (
-            <span className="text-[10px] sm:text-[11px] text-muted-foreground">
-              {currentSeatIds.length} selected
-            </span>
-          )}
-        </div>
-
-        {currentSeatIds.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5 mt-1">
-            {seats
-              .filter((s) => currentSeatIds.includes(s.id))
-              .map((s) => (
-                <Badge
-                  key={s.id}
-                  variant="outline"
-                  className="text-[11px] sm:text-xs px-2 py-0.5 rounded-full flex items-center gap-1 cursor-pointer hover:border-primary/60"
-                  onClick={() => toggleSeatSelection(s)} // click badge to unselect
-                >
-                  <span>{s.seat_number}</span>
-                  <X className="h-3 w-3 opacity-70" />
-                </Badge>
-              ))}
-          </div>
-        ) : (
-          <p className="text-xs sm:text-sm text-muted-foreground italic">
-            No seats selected yet. Tap a seat in the bus layout to add it here.
-          </p>
-        )}
-      </div>
-
-      {/* Locked Seats (by you) */}
-      <div className="rounded-xl border border-border/60 bg-background/70 p-3 sm:p-4 space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[10px] sm:text-[11px] text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-            Locked Seats
-            <Lock className="h-3 w-3 text-primary" />
-          </p>
-        </div>
-
-        {seats.some(
-          (s) => s.status === "locked" && s.locked_by === userId
-        ) ? (
-          <div className="flex flex-wrap gap-1.5 mt-1">
-            {seats
-              .filter(
-                (s) => s.status === "locked" && s.locked_by === userId
-              )
-              .map((s) => (
-                <Badge
-                  key={s.id}
-                  variant="secondary"
-                  className="text-[11px] sm:text-xs px-2 py-0.5 rounded-full flex items-center gap-1"
-                >
-                  <span>{s.seat_number}</span>
-                  {s.locked_until && (
-                    <span className="text-[9px] opacity-70">
-                      until{" "}
-                      {new Date(s.locked_until).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                {/* Bus Info */}
+                <div className="rounded-xl border border-border/60 bg-background/70 p-3 space-y-1">
+                  <p className="text-[10px] sm:text-[11px] text-muted-foreground uppercase tracking-wide">
+                    Bus
+                  </p>
+                  <p className="font-semibold text-foreground text-sm sm:text-base">
+                    {bus?.bus_number ?? "—"}{" "}
+                    {bus?.route && (
+                      <span className="text-xs sm:text-sm text-muted-foreground">
+                        • {bus.route}
+                      </span>
+                    )}
+                  </p>
+                  <div className="flex flex-wrap gap-2 mt-2 text-[10px] sm:text-[11px] text-muted-foreground">
+                    <span className="px-2 py-0.5 rounded-full bg-accent/60 border border-border/70">
+                      Total: <strong>{bus?.total_seats ?? "-"}</strong>
                     </span>
+                    <span className="px-2 py-0.5 rounded-full bg-accent/60 border border-border/70">
+                      Available: <strong>{availableSeatsCount}</strong>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Selected Seats */}
+                <div className="rounded-xl border border-border/60 bg-background/70 p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[10px] sm:text-[11px] text-muted-foreground uppercase tracking-wide">
+                      Selected Seats
+                    </p>
+                    {currentSeatIds.length > 0 && (
+                      <span className="text-[10px] sm:text-[11px] text-muted-foreground">
+                        {currentSeatIds.length} selected
+                      </span>
+                    )}
+                  </div>
+
+                  {currentSeatIds.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {seats
+                        .filter((s) => currentSeatIds.includes(s.id))
+                        .map((s) => (
+                          <Badge
+                            key={s.id}
+                            variant="outline"
+                            className="text-[11px] sm:text-xs px-2 py-0.5 rounded-full flex items-center gap-1 cursor-pointer hover:border-primary/60"
+                            onClick={() => toggleSeatSelection(s)}
+                          >
+                            <span>{s.seat_number}</span>
+                            <X className="h-3 w-3 opacity-70" />
+                          </Badge>
+                        ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs sm:text-sm text-muted-foreground italic">
+                      No seats selected yet. Tap a seat in the bus layout to add it here.
+                    </p>
                   )}
-                </Badge>
-              ))}
-          </div>
-        ) : (
-          <p className="text-xs sm:text-sm text-muted-foreground italic">
-            You haven&apos;t locked any seats yet.
-          </p>
-        )}
-      </div>
+                </div>
 
-      {/* Quick Stats */}
-            {/* Quick Stats */}
-      <div className="space-y-2">
-        <div className="grid grid-cols-2 gap-3">
-          {/* Number of Seats */}
-          <div className="flex flex-col gap-1 rounded-xl bg-background/80 border border-border/70 p-3 sm:p-3.5">
-            <span className="text-[10px] sm:text-[11px] text-muted-foreground uppercase tracking-wide">
-              Seats Selected
-            </span>
-            <div className="flex items-end justify-between">
-              <span className="text-2xl font-extrabold text-foreground leading-none">
-                {currentSeatIds.length}
-              </span>
-              <span className="text-[10px] sm:text-[11px] text-muted-foreground">
-                out of {bus?.total_seats ?? "-"}
-              </span>
-            </div>
-          </div>
+                {/* Locked Seats (by you) */}
+                <div className="rounded-xl border border-border/60 bg-background/70 p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[10px] sm:text-[11px] text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                      Locked Seats
+                      <Lock className="h-3 w-3 text-primary" />
+                    </p>
+                  </div>
 
-          {/* Fare per Seat */}
-          <div className="flex flex-col gap-1 rounded-xl bg-background/80 border border-border/70 p-3 sm:p-3.5">
-            <span className="text-[10px] sm:text-[11px] text-muted-foreground uppercase tracking-wide">
-              Fare per Seat
-            </span>
-            <div className="flex items-center justify-between">
-              <span className="text-2xl font-extrabold text-foreground flex items-center gap-1 leading-none">
-                <IndianRupee className="h-4 w-4 text-primary" />
-                {bus?.fare ?? "-"}
-              </span>
-              {currentSeatIds.length > 0 && (
-                <span className="text-[10px] sm:text-[11px] text-muted-foreground">
-                  x {currentSeatIds.length}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
+                  {seats.some(
+                    (s) => s.status === "locked" && s.locked_by === userId
+                  ) ? (
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {seats
+                        .filter(
+                          (s) => s.status === "locked" && s.locked_by === userId
+                        )
+                        .map((s) => (
+                          <Badge
+                            key={s.id}
+                            variant="secondary"
+                            className="text-[11px] sm:text-xs px-2 py-0.5 rounded-full flex items-center gap-1"
+                          >
+                            <span>{s.seat_number}</span>
+                            {s.locked_until && (
+                              <span className="text-[9px] opacity-70">
+                                until{" "}
+                                {new Date(s.locked_until).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                            )}
+                          </Badge>
+                        ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs sm:text-sm text-muted-foreground italic">
+                      You haven't locked any seats yet.
+                    </p>
+                  )}
+                </div>
 
-        {/* Tiny preview of exactly which seats are counted here */}
-        {currentSeatIds.length > 0 && (
-          <div className="mt-1 flex flex-wrap gap-1.5">
-            {seats
-              .filter((s) => currentSeatIds.includes(s.id))
-              .map((s) => (
-                <Badge
-                  key={s.id}
-                  variant="outline"
-                  className="text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full"
+                {/* Quick Stats */}
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Number of Seats */}
+                    <div className="flex flex-col gap-1 rounded-xl bg-background/80 border border-border/70 p-3">
+                      <span className="text-[10px] sm:text-[11px] text-muted-foreground uppercase tracking-wide">
+                        Seats Selected
+                      </span>
+                      <div className="flex items-end justify-between">
+                        <span className="text-2xl font-extrabold text-foreground leading-none">
+                          {currentSeatIds.length}
+                        </span>
+                        <span className="text-[10px] sm:text-[11px] text-muted-foreground">
+                          out of {bus?.total_seats ?? "-"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Fare per Seat */}
+                    <div className="flex flex-col gap-1 rounded-xl bg-background/80 border border-border/70 p-3">
+                      <span className="text-[10px] sm:text-[11px] text-muted-foreground uppercase tracking-wide">
+                        Fare per Seat
+                      </span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-2xl font-extrabold text-foreground flex items-center gap-1 leading-none">
+                          <IndianRupee className="h-4 w-4 text-primary" />
+                          {bus?.fare ?? "-"}
+                        </span>
+                        {currentSeatIds.length > 0 && (
+                          <span className="text-[10px] sm:text-[11px] text-muted-foreground">
+                            x {currentSeatIds.length}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tiny preview of exactly which seats are counted here */}
+                  {currentSeatIds.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {seats
+                        .filter((s) => currentSeatIds.includes(s.id))
+                        .map((s) => (
+                          <Badge
+                            key={s.id}
+                            variant="outline"
+                            className="text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full"
+                          >
+                            {s.seat_number}
+                          </Badge>
+                        ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Total */}
+                <div className="border-t border-border/70 pt-3 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Total Amount
+                    </p>
+                    {currentSeatIds.length > 0 && (
+                      <p className="text-[11px] sm:text-xs text-muted-foreground">
+                        ₹{bus?.fare} × {currentSeatIds.length} seat
+                        {currentSeatIds.length > 1 ? "s" : ""}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-end justify-between">
+                    <div className="flex items-center gap-1 text-3xl sm:text-4xl font-extrabold text-primary">
+                      <IndianRupee className="h-6 w-6 sm:h-7 sm:w-7" />
+                      <span>{totalFare}</span>
+                    </div>
+                    {currentSeatIds.length > 0 && (
+                      <span className="text-[10px] sm:text-[11px] text-muted-foreground">
+                        Taxes / extra charges: Included
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* CTA */}
+                <Button
+                  onClick={proceedToBooking}
+                  disabled={currentSeatIds.length === 0}
+                  className={cn(
+                    "w-full shadow-lg text-sm sm:text-base rounded-xl transition-all py-6",
+                    currentSeatIds.length === 0
+                      ? "bg-muted text-muted-foreground cursor-not-allowed"
+                      : "bg-primary hover:bg-primary/90 text-primary-foreground"
+                  )}
+                  size="lg"
                 >
-                  {s.seat_number}
-                </Badge>
-              ))}
+                  {currentSeatIds.length === 0
+                    ? "Select Seats to Continue"
+                    : "Proceed to Payment"}
+                </Button>
+              </Card>
+            </div>
           </div>
-        )}
-      </div>
-
-      {/* Total */}
-      <div className="border-t border-border/70 pt-3 sm:pt-4 mt-1 sm:mt-2 space-y-1.5">
-        <div className="flex items-center justify-between">
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Total Amount
-          </p>
-          {currentSeatIds.length > 0 && (
-            <p className="text-[11px] sm:text-xs text-muted-foreground">
-              ₹{bus?.fare} × {currentSeatIds.length} seat
-              {currentSeatIds.length > 1 ? "s" : ""}
-            </p>
-          )}
-        </div>
-        <div className="flex items-end justify-between">
-          <div className="flex items-center gap-1 text-3xl sm:text-4xl font-extrabold text-primary">
-            <IndianRupee className="h-6 w-6 sm:h-7 sm:w-7" />
-            <span>{totalFare}</span>
-          </div>
-          {currentSeatIds.length > 0 && (
-            <span className="text-[10px] sm:text-[11px] text-muted-foreground">
-              Taxes / extra charges: Included
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* CTA */}
-      <Button
-        onClick={proceedToBooking}
-        disabled={currentSeatIds.length === 0}
-        className={cn(
-          "w-full shadow-lg text-sm sm:text-base rounded-xl transition-all",
-          currentSeatIds.length === 0
-            ? "bg-muted text-muted-foreground cursor-not-allowed"
-            : "bg-primary hover:bg-primary/90 text-primary-foreground"
-        )}
-        size="lg"
-      >
-        {currentSeatIds.length === 0
-          ? "Select Seats to Continue"
-          : "Proceed to Payment"}
-      </Button>
-    </Card>
-  </div>
-</div>
         </div>
       </div>
     </div>
   );
 };
 
-/* ===================== New Seat Status Popup Component ===================== */
+/* ===================== Component Definitions ===================== */
 const SeatStatusPopup = ({
   open,
   onClose,
@@ -1287,7 +1268,7 @@ const SeatStatusPopup = ({
   const isLocked = type === "locked";
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <Card className="w-full max-w-xs bg-card border-border shadow-2xl overflow-hidden rounded-2xl animate-in zoom-in-95 duration-200">
         <div className="p-6 flex flex-col items-center text-center">
           <div
@@ -1331,7 +1312,7 @@ const SeatStatusPopup = ({
 
           <Button
             variant="default"
-            className="w-full mt-6 font-semibold"
+            className="w-full mt-6 font-semibold py-6"
             onClick={onClose}
           >
             Got it
@@ -1352,15 +1333,15 @@ const BookingTicketsModal = ({
 }: {
   open: boolean;
   onClose: () => void;
-  bookings: Booking[];      // already filtered for this bus in parent
+  bookings: Booking[];
   loading: boolean;
-  bus: BusData | null;      // current bus only
-  seats: Seat[];            // seat matrix of this bus only
+  bus: BusData | null;
+  seats: Seat[];
 }) => {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[520] bg-black/40 backdrop-blur-sm flex items-center justify-center px-2 py-2">
+    <div className="fixed inset-0 z-[520] bg-black/40 backdrop-blur-sm flex items-center justify-center p-2">
       <div className="relative w-full max-w-3xl bg-background rounded-2xl border border-border shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-border/70 bg-card/80 backdrop-blur-sm">
@@ -1391,7 +1372,6 @@ const BookingTicketsModal = ({
         {/* Content */}
         <div className="max-h-[75vh] overflow-y-auto px-4 sm:px-6 pb-4 sm:pb-6 pt-3 space-y-4">
           {loading ? (
-            // Loading state
             <div className="w-full flex flex-col items-center justify-center py-16">
               <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
               <p className="text-xs sm:text-sm text-muted-foreground">
@@ -1399,7 +1379,6 @@ const BookingTicketsModal = ({
               </p>
             </div>
           ) : bookings.length === 0 ? (
-            // Simple empty state
             <div className="w-full flex flex-col items-center justify-center py-16 space-y-2">
               <p className="text-sm sm:text-base text-foreground font-semibold">
                 You have not booked any tickets
@@ -1410,18 +1389,13 @@ const BookingTicketsModal = ({
               </p>
             </div>
           ) : (
-            // Tickets list (only bookings whose seats exist in this bus's matrix)
             <div className="space-y-4 sm:space-y-5">
               {bookings.map((booking) => {
-                // Map booking.seat_ids -> seats of THIS bus
                 const bookedSeats =
                   booking.seat_ids
                     ?.map((sid) => seats.find((s) => s.id === sid))
                     .filter((s): s is Seat => Boolean(s)) ?? [];
 
-                // IMPORTANT:
-                // Agar is booking ki koi seat iss bus ki seat-matrix me nahi mil rahi,
-                // to history me bhi is bus ke view me mat dikhao.
                 if (bookedSeats.length === 0) return null;
 
                 return (
@@ -1529,7 +1503,7 @@ const BookingTicketsModal = ({
                           <span>= Total:</span>
                           <span className="flex items-center gap-1 text-sm sm:text-base font-semibold text-primary">
                             <IndianRupee className="h-3 w-3 sm:h-4 sm:w-4" />
-                            {booking.total_fare ??
+                            {booking.total_amount ??
                               (bus?.fare
                                 ? bookedSeats.length * bus.fare
                                 : "?")}
@@ -1585,6 +1559,7 @@ const NotificationStack = ({
     ))}
   </div>
 );
+
 const SeatActionDialog = ({
   seat,
   isLockedByUser,
@@ -1604,7 +1579,7 @@ const SeatActionDialog = ({
   onToggleSelect: () => void;
   onBook: () => void;
 }) => (
-  <div className="fixed inset-0 z-[70] bg-black/40 backdrop-blur-sm flex items-center justify-center px-4">
+  <div className="fixed inset-0 z-[70] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
     <Card className="w-full max-w-sm border-border overflow-hidden">
       <div className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 border-b border-border/60">
         <div className="flex flex-col">
@@ -1619,8 +1594,8 @@ const SeatActionDialog = ({
           <X className="h-4 w-4" />
         </Button>
       </div>
-      <div className="p-4 sm:p-5 space-y-4">
-        <div className="bg-accent/60 border border-border rounded-lg p-3 sm:p-4 space-y-2">
+      <div className="p-4 sm:p-5 space-y-3">
+        <div className="bg-accent/60 border border-border rounded-lg p-3 space-y-2">
           <div className="flex items-center gap-3">
             <ShieldCheck className="h-5 w-5 text-primary" />
             <div>
@@ -1636,7 +1611,7 @@ const SeatActionDialog = ({
         {!isLockedByUser && (
           <Button
             variant="default"
-            className="w-full justify-start gap-3 text-sm"
+            className="w-full justify-start gap-3 text-sm py-6"
             onClick={onLock}
           >
             <Lock className="h-4 w-4" />
@@ -1646,7 +1621,7 @@ const SeatActionDialog = ({
         {isLockedByUser && (
           <Button
             variant="secondary"
-            className="w-full justify-start gap-3 text-sm"
+            className="w-full justify-start gap-3 text-sm py-6"
             onClick={onReleaseLock}
           >
             <Unlock className="h-4 w-4" />
@@ -1655,23 +1630,14 @@ const SeatActionDialog = ({
         )}
         <Button
           variant={isSelected ? "destructive" : "outline"}
-          className="w-full justify-start gap-3 text-sm"
+          className="w-full justify-start gap-3 text-sm py-6"
           onClick={onToggleSelect}
         >
           <CheckCircle2 className="h-4 w-4" />
           {isSelected ? "Remove from booking" : "Select for booking"}
         </Button>
-        {/* If you ever want single-click book, you can enable this:
-        <Button
-          variant="outline"
-          className="w-full justify-start gap-3 text-sm"
-          onClick={onBook}
-        >
-          <CheckCircle2 className="h-4 w-4" />
-          Book this seat
-        </Button> */}
         {seat.locked_until && (
-          <div className="flex items-center gap-2 text-[11px] sm:text-xs text-muted-foreground mt-2">
+          <div className="flex items-center gap-2 text-[11px] sm:text-xs text-muted-foreground mt-2 pt-2 border-t border-border/20">
             <Clock className="h-3 w-3" />
             Lock ends: {new Date(seat.locked_until).toLocaleString()}
           </div>
@@ -1680,6 +1646,7 @@ const SeatActionDialog = ({
     </Card>
   </div>
 );
+
 const BookingDetailsDialog = ({
   open,
   onOpenChange,
@@ -1691,9 +1658,9 @@ const BookingDetailsDialog = ({
 }) => {
   if (!open || !booking) return null;
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm px-4 py-6">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <Card className="w-full max-w-md bg-card border-border rounded-2xl shadow-2xl overflow-hidden">
-        <div className="relative p-6 bg-gradient-to-br from-primary/5 to-accent/5">
+        <div className="relative p-4 sm:p-6 bg-gradient-to-br from-primary/5 to-accent/5">
           <Button
             variant="ghost"
             size="icon"
@@ -1706,7 +1673,7 @@ const BookingDetailsDialog = ({
             <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
               <TicketIcon className="h-8 w-8 text-primary" />
             </div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">
               Booking Details
             </h2>
             <p className="text-sm text-muted-foreground">
@@ -1714,7 +1681,7 @@ const BookingDetailsDialog = ({
             </p>
           </div>
         </div>
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-4">
           <div className="grid grid-cols-1 gap-4">
             <div className="flex items-start gap-3">
               <div className="mt-1 h-5 w-5 text-primary flex-shrink-0">
@@ -1763,7 +1730,7 @@ const BookingDetailsDialog = ({
           </div>
           <Button
             variant="default"
-            className="w-full mt-4"
+            className="w-full mt-4 py-6"
             onClick={() => onOpenChange(false)}
           >
             Close
