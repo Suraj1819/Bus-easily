@@ -2,14 +2,23 @@ import { useState, useEffect } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import {
   Bus,
   ArrowLeft,
   IndianRupee,
-  CheckCircle2,
+  Clock,
   Loader2,
+  User,
+  CreditCard,
+  Smartphone,
+  ShieldCheck,
+  CheckCircle2,
+  Ticket,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -29,124 +38,54 @@ const Booking = () => {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [paymentSuccess, setPaymentSuccess] = useState(false); // NEW STATE
+
   const [bus, setBus] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [seatDetails, setSeatDetails] = useState<SeatInfo[]>([]);
-  const [initialLoading, setInitialLoading] = useState(true);
+  const [paymentMethod, setPaymentMethod] = useState<"upi" | "card">("upi");
 
-  const state = location.state as LocationState;
+  const state = location.state as LocationState | null;
   const selectedSeats = state?.selectedSeats || [];
   const totalFare = state?.totalFare || 0;
 
+  const bookingFee = 0;
+  const finalTotal = totalFare + bookingFee;
+
   useEffect(() => {
-    if (!state || selectedSeats.length === 0) {
-      navigate("/browse");
+    if (!busId || !state || selectedSeats.length === 0 || totalFare <= 0) {
+      navigate("/browse", { replace: true });
       return;
     }
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busId]);
 
   const fetchData = async () => {
     try {
-      const {
-        data: { user: userData },
-      } = await supabase.auth.getUser();
-
+      setInitialLoading(true);
+      const { data: { user: userData } } = await supabase.auth.getUser();
       if (!userData) {
         navigate("/auth");
         return;
       }
-
       setUser(userData);
-
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", userData.id)
-        .single();
+      const { data: profileData } = await supabase.from("profiles").select("*").eq("user_id", userData.id).single();
       setProfile(profileData);
-
-      const { data: busData } = await supabase
-        .from("buses")
-        .select("*")
-        .eq("id", busId)
-        .single();
+      const { data: busData } = await supabase.from("buses").select("*").eq("id", busId).single();
       setBus(busData);
-
       if (selectedSeats.length > 0) {
-        const { data: seatsData } = await supabase
-          .from("seats")
-          .select("id, seat_number")
-          .in("id", selectedSeats);
-
+        const { data: seatsData } = await supabase.from("seats").select("id, seat_number").in("id", selectedSeats);
         setSeatDetails((seatsData || []) as SeatInfo[]);
       }
     } catch (error: any) {
       console.error(error);
       toast.error("Failed to load booking details");
+      navigate("/browse", { replace: true });
     } finally {
       setInitialLoading(false);
     }
-  };
-
-  const handlePayment = async () => {
-    if (!user || !bus || selectedSeats.length === 0) {
-      toast.error("Booking details are incomplete. Please try again.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const bookingId = `BKG${Date.now()}`;
-
-      // 1. Insert Booking
-      const { error: bookingError } = await supabase
-        .from("bookings")
-        .insert({
-          booking_id: bookingId,
-          user_id: user.id,
-          bus_id: busId,
-          seat_ids: selectedSeats,
-          // 👇 FIX: Maine isko wapis total_fare kar diya hai
-          total_fare: totalFare, 
-          status: "confirmed",
-          payment_status: "completed",
-          booked_at: new Date().toISOString(),
-        });
-
-      if (bookingError) throw bookingError;
-
-      // 2. Update Seats Status
-      const { error: seatsError } = await supabase
-        .from("seats")
-        .update({
-          status: "booked",
-          locked_by: null,
-          locked_until: null,
-        })
-        .in("id", selectedSeats);
-
-      if (seatsError) throw seatsError;
-
-      toast.success("Booking confirmed successfully!");
-      
-      // 3. Redirect to Dashboard
-      setTimeout(() => {
-        navigate("/dashboard", { replace: true });
-      }, 1000);
-
-    } catch (error: any) {
-      console.error("Booking Error:", error);
-      toast.error(error.message || "Payment failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCancel = () => {
-    if (!loading) navigate(-1);
   };
 
   const sortedSeatDetails = [...seatDetails].sort((a, b) => {
@@ -156,317 +95,471 @@ const Booking = () => {
     return a.seat_number.localeCompare(b.seat_number);
   });
 
+  const handlePayment = async () => {
+    if (!user || !bus || selectedSeats.length === 0) {
+      toast.error("Booking details are incomplete.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const bookingId = `BKG${Date.now()}`;
+
+      // 1. Insert Booking
+      const { error: bookingError } = await supabase.from("bookings").insert({
+        booking_id: bookingId,
+        user_id: user.id,
+        bus_id: busId,
+        seat_ids: selectedSeats,
+        total_fare: finalTotal,
+        status: "confirmed",
+        payment_status: "completed",
+        booked_at: new Date().toISOString(),
+        payment_method: paymentMethod,
+      });
+      if (bookingError) throw bookingError;
+
+      // 2. Update Seats Status
+      const { error: seatsError } = await supabase.from("seats").update({
+        status: "booked",
+        locked_by: null,
+        locked_until: null,
+      }).in("id", selectedSeats);
+      if (seatsError) throw seatsError;
+
+      // 3. Trigger Email (Non-blocking)
+      if (user.email) {
+        try {
+          supabase.functions.invoke("send-booking-email", {
+            body: {
+              to: user.email,
+              bookingId,
+              bus: {
+                bus_number: bus.bus_number,
+                route: bus.route,
+                departure_time: bus.departure_time,
+                arrival_time: bus.arrival_time,
+              },
+              profile: { name: profile?.name, phone: profile?.phone },
+              seats: sortedSeatDetails.map((s) => s.seat_number),
+              totalAmount: finalTotal,
+              paymentMethod,
+              bookedAt: new Date().toISOString(),
+            },
+          });
+        } catch (err) { console.error("Email error", err); }
+      }
+
+      // --- SUCCESS FLOW ---
+      setLoading(false);
+      setPaymentSuccess(true); // Show success screen
+      
+      // Redirect after 3 seconds
+      setTimeout(() => {
+        navigate("/dashboard", { replace: true });
+      }, 3000);
+
+    } catch (error: any) {
+      console.error("Booking Error:", error);
+      toast.error(error.message || "Payment failed");
+      setLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (!loading) navigate(-1);
+  };
+
+  // --- 1. Loading Screen ---
   if (initialLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-accent flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">
-            Preparing your booking summary...
-          </p>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4 animate-pulse">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="text-slate-500 font-medium">Preparing checkout...</p>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-accent flex flex-col">
-      {/* Header */}
-      <nav className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
-          <Button variant="ghost" onClick={handleCancel}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          <div className="flex items-center gap-2">
-            <Bus className="h-8 w-8 text-primary" />
-            <div className="flex flex-col">
-              <span className="text-xl font-bold text-foreground">
-                Confirm Booking
-              </span>
-              <span className="text-xs text-muted-foreground">
-                Review your journey and seats before payment
-              </span>
-            </div>
+  // --- 2. Payment Success Screen (NEW) ---
+  if (paymentSuccess) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white animate-in fade-in duration-500">
+        <div className="text-center space-y-6 p-8 max-w-sm w-full">
+          {/* Animated Icon */}
+          <div className="relative mx-auto w-24 h-24 flex items-center justify-center">
+             <div className="absolute inset-0 bg-green-100 rounded-full animate-ping opacity-75"></div>
+             <div className="relative bg-green-100 w-24 h-24 rounded-full flex items-center justify-center">
+                <CheckCircle2 className="w-12 h-12 text-green-600 animate-[zoom-in_0.5s_ease-out]" />
+             </div>
           </div>
-        </div>
-      </nav>
 
-      {/* CONTENT */}
-      <div className="flex-1 container mx-auto px-4 py-6 pb-24 sm:pb-10">
-        <div className="max-w-3xl mx-auto space-y-6">
-          {/* Trip Overview */}
-          <Card className="p-6">
-            <h2 className="text-lg font-bold text-foreground mb-3">
-              Trip Overview
-            </h2>
-            <p className="text-xs text-muted-foreground mb-4">
-              Quick summary of your bus, timing, and seats selected from the
-              seat matrix.
-            </p>
+          <div className="space-y-2">
+             <h2 className="text-2xl font-bold text-slate-900">Payment Successful!</h2>
+             <p className="text-slate-500">Your booking has been confirmed.</p>
+          </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 text-sm">
-              <div className="space-y-1">
-                <p className="text-muted-foreground text-xs">Bus</p>
-                <p className="font-semibold text-foreground">
-                  {bus?.bus_number || "—"}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {bus?.route || "—"}
-                </p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-muted-foreground text-xs">Timing</p>
-                <p className="font-semibold text-foreground">
-                  {bus?.departure_time && bus?.arrival_time
-                    ? `${bus.departure_time} – ${bus.arrival_time}`
-                    : "—"}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Please arrive 10–15 minutes before departure.
-                </p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-muted-foreground text-xs">
-                  Number of Seats
-                </p>
-                <p className="font-semibold text-foreground">
-                  {selectedSeats.length}
-                </p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-muted-foreground text-xs">Total Fare</p>
-                <p className="font-semibold text-primary flex items-center gap-1">
-                  <IndianRupee className="h-4 w-4" />
-                  {totalFare}
-                </p>
-              </div>
-            </div>
-          </Card>
+          {/* Ticket Visual */}
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center gap-4 max-w-xs mx-auto animate-[slide-in-from-bottom_0.5s_ease-out_0.2s_both]">
+             <div className="bg-violet-100 p-2.5 rounded-lg">
+                <Ticket className="w-6 h-6 text-violet-600" />
+             </div>
+             <div className="text-left">
+                <p className="text-xs text-slate-500 font-medium uppercase">Booking ID</p>
+                <p className="text-sm font-bold text-slate-900">#BKG{Date.now().toString().slice(-6)}</p>
+             </div>
+          </div>
 
-          {/* Passenger Details */}
-          <Card className="p-6">
-            <h2 className="text-xl font-bold text-foreground mb-4">
-              Passenger Details
-            </h2>
-            <p className="text-xs text-muted-foreground mb-4">
-              These details will appear on your ticket and may be shared with
-              transport staff if needed.
-            </p>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Name:</span>
-                <span className="font-semibold text-foreground">
-                  {profile?.name || "—"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Phone:</span>
-                <span className="font-semibold text-foreground">
-                  {profile?.phone || "—"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Branch:</span>
-                <span className="font-semibold text-foreground">
-                  {profile?.branch || "—"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Year:</span>
-                <span className="font-semibold text-foreground">
-                  {profile?.year || "—"}
-                </span>
-              </div>
-            </div>
-          </Card>
-
-          {/* Bus Details */}
-          <Card className="p-6">
-            <h2 className="text-xl font-bold text-foreground mb-4">
-              Bus Details
-            </h2>
-            <p className="text-xs text-muted-foreground mb-4">
-              Confirm you are booking the correct bus and route.
-            </p>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Bus Number:</span>
-                <span className="font-semibold text-foreground">
-                  {bus?.bus_number || "—"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Route:</span>
-                <span className="font-semibold text-foreground">
-                  {bus?.route || "—"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Type:</span>
-                <span className="font-semibold text-foreground">
-                  {bus?.bus_type || "—"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Timing:</span>
-                <span className="font-semibold text-foreground">
-                  {bus?.departure_time && bus?.arrival_time
-                    ? `${bus.departure_time} - ${bus.arrival_time}`
-                    : "—"}
-                </span>
-              </div>
-            </div>
-          </Card>
-
-          {/* Selected Seats Summary */}
-          <Card className="p-6">
-            <h2 className="text-xl font-bold text-foreground mb-4">
-              Selected Seats
-            </h2>
-            <p className="text-xs text-muted-foreground mb-4">
-              These are the exact seat boxes you clicked in the seat matrix.
-            </p>
-
-            {sortedSeatDetails.length > 0 ? (
-              <>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {sortedSeatDetails.map((seat) => (
-                    <Badge
-                      key={seat.id}
-                      variant="default"
-                      className="px-3 py-1 text-xs font-semibold"
-                    >
-                      Seat {seat.seat_number}
-                    </Badge>
-                  ))}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  You have selected{" "}
-                  <span className="font-semibold text-foreground">
-                    {sortedSeatDetails.length}
-                  </span>{" "}
-                  seat
-                  {sortedSeatDetails.length > 1 ? "s" : ""}. You can still go
-                  back to change them before payment.
-                </div>
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground italic">
-                Loading selected seats...
-              </p>
-            )}
-          </Card>
-
-          {/* Fare Breakup */}
-          <Card className="p-6">
-            <h2 className="text-xl font-bold text-foreground mb-4">
-              Fare Breakup
-            </h2>
-            <p className="text-xs text-muted-foreground mb-4">
-              Final fare based on bus fare and number of seats.
-            </p>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Base Fare per Seat:</span>
-                <span className="font-semibold text-foreground flex items-center gap-1">
-                  <IndianRupee className="h-3 w-3" />
-                  {bus?.fare ?? "—"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Number of Seats:</span>
-                <span className="font-semibold text-foreground">
-                  {selectedSeats.length}
-                </span>
-              </div>
-              <div className="border-t border-border pt-2 mt-2 flex justify-between">
-                <span className="font-bold text-foreground">Total Amount:</span>
-                <span className="font-bold text-primary text-xl flex items-center gap-1">
-                  <IndianRupee className="h-5 w-5" />
-                  {totalFare}
-                </span>
-              </div>
-            </div>
-          </Card>
-
-          {/* Payment Options Info */}
-          <Card className="p-6 bg-primary/5 border-primary">
-            <div className="flex items-start gap-3">
-              <CheckCircle2 className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
-              <div>
-                <h3 className="font-semibold text-foreground mb-2">
-                  Payment Gateway
-                </h3>
-                <p className="text-sm text-muted-foreground mb-2">
-                  In a production environment, this would integrate with a
-                  secure payment provider (Razorpay, Stripe, Paytm, etc.).
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Right now, clicking{" "}
-                  <span className="font-semibold text-foreground">
-                    &quot;Confirm &amp; Pay&quot;
-                  </span>{" "}
-                  will simulate a successful payment, create your booking, and
-                  show it on your Dashboard.
-                </p>
-              </div>
-            </div>
-          </Card>
-
-          {/* Desktop / tablet buttons (scroll with page) */}
-          <div className="hidden sm:flex gap-4 mt-2">
-            <Button
-              variant="outline"
-              onClick={handleCancel}
-              className="flex-1"
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handlePayment}
-              disabled={loading}
-              className="flex-1"
-              size="lg"
-            >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Processing...
-                </span>
-              ) : (
-                "Confirm & Pay"
-              )}
-            </Button>
+          <div className="pt-8">
+             <div className="flex items-center justify-center gap-2 text-sm text-slate-400">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Redirecting to dashboard...
+             </div>
           </div>
         </div>
       </div>
+    );
+  }
 
-      {/* Mobile fixed bottom bar */}
-      <div className="fixed inset-x-0 bottom-0 z-50 bg-card/95 border-t border-border px-4 py-3 sm:hidden">
-        <div className="max-w-3xl mx-auto flex gap-3">
+  // --- 3. Main Booking Screen ---
+  return (
+    <div className="min-h-screen bg-slate-50/50 pb-24 sm:pb-12">
+      {/* Sticky Header */}
+      <header className="sticky top-0 z-40 w-full border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleCancel}
+              className="rounded-full"
+              disabled={loading || paymentSuccess}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-lg font-semibold leading-none">Checkout</h1>
+              <p className="text-xs text-muted-foreground mt-1">
+                Complete your booking
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-green-600 bg-green-50 px-3 py-1.5 rounded-full text-xs font-medium">
+            <ShieldCheck className="h-4 w-4" />
+            100% Secure
+          </div>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-8">
+        <div className="grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          {/* LEFT COLUMN */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Trip Details */}
+            <Card className="shadow-sm border-slate-200 overflow-hidden">
+              <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-bold flex items-center gap-2">
+                    <Bus className="h-5 w-5 text-primary" />
+                    Trip Details
+                  </CardTitle>
+                  <Badge variant="outline" className="font-normal">
+                    {bus?.bus_type || "Standard Bus"}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                  {/* Origin */}
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      From
+                    </p>
+                    <p className="text-lg font-bold text-slate-900">
+                      {bus?.route?.split("-")[0]?.trim() || "Origin"}
+                    </p>
+                    <div className="flex items-center gap-1.5 text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded w-fit">
+                      <Clock className="h-3.5 w-3.5" />
+                      {bus?.departure_time || "--:--"}
+                    </div>
+                  </div>
+
+                  {/* Route visual */}
+                  <div className="hidden md:flex flex-1 flex-col items-center px-4">
+                    <p className="text-xs text-muted-foreground mb-2">
+                      {bus?.bus_number}
+                    </p>
+                    <div className="w-full flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-slate-300" />
+                      <div className="h-[2px] flex-1 bg-slate-300 border-t border-dashed border-slate-400" />
+                      <Bus className="h-4 w-4 text-primary" />
+                      <div className="h-[2px] flex-1 bg-slate-300 border-t border-dashed border-slate-400" />
+                      <div className="h-2 w-2 rounded-full bg-slate-300" />
+                    </div>
+                    <p className="text-xs text-green-600 font-medium mt-2">
+                      On Time
+                    </p>
+                  </div>
+
+                  {/* Destination */}
+                  <div className="space-y-1 text-left md:text-right">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      To
+                    </p>
+                    <p className="text-lg font-bold text-slate-900">
+                      {bus?.route?.split("-")[1]?.trim() || "Destination"}
+                    </p>
+                    <div className="flex items-center gap-1.5 text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded w-fit md:ml-auto">
+                      <Clock className="h-3.5 w-3.5" />
+                      {bus?.arrival_time || "--:--"}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Passenger Info */}
+            <Card className="shadow-sm border-slate-200">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  <User className="h-5 w-5 text-primary" />
+                  Passenger Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid sm:grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Primary Passenger
+                    </p>
+                    <p className="font-semibold text-slate-900">
+                      {profile?.name || "Guest User"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Contact Number
+                    </p>
+                    <p className="font-semibold text-slate-900">
+                      {profile?.phone || "Not provided"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Branch / Year
+                    </p>
+                    <p className="font-semibold text-slate-900">
+                      {profile?.branch
+                        ? `${profile.branch} / ${profile.year || ""}`
+                        : "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Email Sent To
+                    </p>
+                    <p className="font-semibold text-slate-900 truncate">
+                      {user?.email || "—"}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Payment Method */}
+            <Card className="shadow-sm border-slate-200">
+              <CardHeader>
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  <CreditCard className="h-5 w-5 text-primary" />
+                  Select Payment Method
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <RadioGroup
+                  value={paymentMethod}
+                  onValueChange={(val) =>
+                    setPaymentMethod(val as "upi" | "card")
+                  }
+                  className="grid gap-4"
+                >
+                  {/* UPI Option */}
+                  <div
+                    className={`flex flex-col gap-2 border p-4 rounded-xl transition-all ${
+                      paymentMethod === "upi"
+                        ? "border-primary bg-primary/5 ring-1 ring-primary"
+                        : "border-slate-200"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <RadioGroupItem value="upi" id="upi" />
+                        <Label
+                          htmlFor="upi"
+                          className="font-medium cursor-pointer flex items-center gap-2"
+                        >
+                          <Smartphone className="h-4 w-4 text-slate-500" />
+                          UPI / Google Pay / PhonePe / Paytm
+                        </Label>
+                      </div>
+                      <Badge variant="secondary" className="text-xs">
+                        Fastest
+                      </Badge>
+                    </div>
+                    {/* Brand chips */}
+                    <div className="flex items-center gap-2 pl-7">
+                      <span
+                        className="px-2 py-0.5 rounded-full text-[10px] font-semibold text-white"
+                        style={{ backgroundColor: "#4285F4" }}
+                      >
+                        GPay
+                      </span>
+                      <span
+                        className="px-2 py-0.5 rounded-full text-[10px] font-semibold text-white"
+                        style={{ backgroundColor: "#5F259F" }}
+                      >
+                        PhonePe
+                      </span>
+                      <span
+                        className="px-2 py-0.5 rounded-full text-[10px] font-semibold text-slate-900"
+                        style={{ backgroundColor: "#00BAF2" }}
+                      >
+                        Paytm
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Card Option */}
+                  <div
+                    className={`flex items-center space-x-2 border p-4 rounded-xl transition-all ${
+                      paymentMethod === "card"
+                        ? "border-primary bg-primary/5 ring-1 ring-primary"
+                        : "border-slate-200"
+                    }`}
+                  >
+                    <RadioGroupItem value="card" id="card" />
+                    <Label
+                      htmlFor="card"
+                      className="font-medium cursor-pointer flex items-center gap-2"
+                    >
+                      <CreditCard className="h-4 w-4 text-slate-500" />
+                      Credit / Debit Card
+                    </Label>
+                  </div>
+                </RadioGroup>
+
+                <div className="mt-4 p-3 bg-yellow-50 text-yellow-800 text-xs rounded-lg border border-yellow-100 flex gap-2">
+                  <ShieldCheck className="h-4 w-4 shrink-0" />
+                  This is a simulated payment environment. No real money will be
+                  deducted, but a booking record will be created.
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* RIGHT COLUMN: Summary */}
+          <div className="lg:col-span-1">
+            <div className="sticky top-24 space-y-4">
+              <Card className="shadow-md border-slate-200 overflow-hidden">
+                <div className="bg-slate-900 text-white p-4 text-center">
+                  <p className="text-xs opacity-80 uppercase tracking-widest">
+                    Total Amount
+                  </p>
+                  <p className="text-3xl font-bold flex justify-center items-center gap-1 mt-1">
+                    <IndianRupee className="h-6 w-6" />
+                    {finalTotal}
+                  </p>
+                </div>
+
+                <CardContent className="p-5 space-y-4">
+                  {/* Seats */}
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-muted-foreground">
+                      Selected Seats
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {sortedSeatDetails.length > 0 ? (
+                        sortedSeatDetails.map((seat) => (
+                          <Badge
+                            key={seat.id}
+                            variant="secondary"
+                            className="bg-slate-100 text-slate-700 border-slate-200"
+                          >
+                            {seat.seat_number}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-xs italic text-muted-foreground">
+                          Loading...
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Bill Details */}
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between text-slate-600">
+                      <span>Base Fare ({selectedSeats.length} seats)</span>
+                      <span>₹{totalFare}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-600">
+                      <span>Booking Fee</span>
+                      <span className="text-green-600">Free</span>
+                    </div>
+                    <Separator className="my-2 border-dashed" />
+                    <div className="flex justify-between font-bold text-lg text-slate-900">
+                      <span>Total</span>
+                      <span>₹{finalTotal}</span>
+                    </div>
+                  </div>
+
+                  {/* Pay Button (desktop / tablet only) */}
+                  <Button
+                    size="lg"
+                    className="w-full mt-4 font-bold text-md h-12 shadow-lg shadow-primary/20 hidden lg:flex items-center justify-center"
+                    onClick={handlePayment}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    ) : (
+                      `Pay ₹${finalTotal}`
+                    )}
+                  </Button>
+
+                  <p className="text-[10px] text-center text-muted-foreground">
+                    By proceeding, you agree to Buseasily&apos;s Terms &
+                    Conditions.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Mobile Sticky Footer */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 lg:hidden z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+        <div className="flex items-center justify-between gap-4 max-w-md mx-auto">
+          <div>
+            <p className="text-xs text-muted-foreground">Total Amount</p>
+            <p className="text-xl font-bold flex items-center text-slate-900">
+              <IndianRupee className="h-4 w-4" />
+              {finalTotal}
+            </p>
+          </div>
           <Button
-            variant="outline"
-            onClick={handleCancel}
-            className="flex-1"
-            disabled={loading}
-          >
-            Cancel
-          </Button>
-          <Button
+            size="lg"
+            className="flex-1 font-bold flex items-center justify-center"
             onClick={handlePayment}
             disabled={loading}
-            className="flex-1"
-            size="lg"
           >
             {loading ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Processing...
-              </span>
+              <Loader2 className="h-6 w-6 animate-spin" />
             ) : (
-              "Confirm & Pay"
+              "Proceed to Pay"
             )}
           </Button>
         </div>

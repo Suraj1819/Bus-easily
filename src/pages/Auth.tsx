@@ -58,7 +58,8 @@ const GoogleLogo = () => (
 const SITE_URL = import.meta.env.VITE_SITE_URL || "https://buseasily.netlify.app";
 
 /* ----------------------------- Types ----------------------------- */
-type AuthStep = "email" | "otp" | "phone-otp" | "reset-password";
+// Added "success" step here
+type AuthStep = "email" | "otp" | "phone-otp" | "reset-password" | "success";
 type AuthMode = "signin" | "signup";
 type OtpType = "email" | "phone";
 
@@ -101,48 +102,67 @@ const Auth = () => {
 
   /* ------------------------ Session / Auth listener ------------------------ */
   useEffect(() => {
-    const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        redirectAfterAuth(data.session.user.id);
-      }
-    };
-
-    checkSession();
-
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session) {
-        toast.success("Login successful!");
-        redirectAfterAuth(session.user.id);
+    // Check initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        // Show success screen briefly before redirecting
+        setAuthStep("success");
+        setTimeout(() => redirectAfterAuth(session.user.id), 2000);
       }
     });
 
-    return () => data.subscription.unsubscribe();
-  }, [navigate]);
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        // Removed toast, set success step instead
+        setAuthStep("success");
+        // Delay redirect to show the success animation
+        setTimeout(() => redirectAfterAuth(session.user.id), 2000);
+      }
+    });
 
-  useEffect(() => {
-    setLoginMethod("password");
-  }, []);
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   const redirectAfterAuth = async (userId: string) => {
     try {
-      const { data: profile } = await supabase
+      const { data: profile, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("user_id", userId)
         .single();
 
-      // Always redirect to browse page after successful login
-      navigate(profile ? "/browse" : "/profile");
+      if (error || !profile) {
+        navigate("/profile");
+      } else {
+        navigate("/browse");
+      }
     } catch {
-      // If there's any error, still redirect to browse
       navigate("/browse");
     }
   };
 
-  /* ----------------------------- OTP Input Handlers ---------------------------- */
+  /* ----------------------------- Helper: Format Phone ---------------------------- */
+  const formatPhoneNumber = (inputPhone: string) => {
+    const cleaned = inputPhone.replace(/[^\d+]/g, "");
+    if (cleaned.startsWith("+")) {
+      const digitsAfterPlus = cleaned.substring(1).length;
+      if (digitsAfterPlus < 8 || digitsAfterPlus > 15) {
+        throw new Error("Invalid phone number length");
+      }
+      return cleaned;
+    }
+    if (cleaned.length === 10) {
+      return `+91${cleaned}`;
+    } else if (cleaned.length > 10 && cleaned.length <= 15) {
+      return `+${cleaned}`;
+    }
+    throw new Error("Invalid phone number");
+  };
+
+  /* ------------------------------------- OTP Input Handlers ---------------------------- */
   const handleOtpChange = (index: number, value: string) => {
-    if (value && !/^\d$/.test(value)) return;
+    if (value && !/^\d$/.test(value)) return; 
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
@@ -160,148 +180,125 @@ const Auth = () => {
     e.preventDefault();
     const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
     const newOtp = [...otp];
-    for (let i = 0; i < pasted.length; i++) newOtp[i] = pasted[i];
+    for (let i = 0; i < pasted.length; i++) newOtp[i] = pasted[i] || "";
     setOtp(newOtp);
     otpInputRefs.current[Math.min(pasted.length, 5)]?.focus();
   };
 
   /* ----------------------------- Edge Function Handlers ---------------------------- */
   const handleSendOtp = async () => {
+    setOtp(Array(6).fill(""));
+    
     if (otpType === "email") {
-      if (!email) return toast.error("Email required");
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-        return toast.error("Invalid email");
+      if (!email) return toast.error("Email is required");
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return toast.error("Please enter a valid email address");
+      }
     } else {
-      if (!phone) return toast.error("Phone required");
-      if (!/^\+?[0-9]{10,15}$/.test(phone))
-        return toast.error("Invalid phone");
+      if (!phone) return toast.error("Phone number is required");
+      try {
+        formatPhoneNumber(phone); 
+      } catch (err) {
+        return toast.error("Please enter a valid phone number");
+      }
     }
 
     setLoading(true);
     try {
+      const finalContact = otpType === "email" ? email : formatPhoneNumber(phone);
+      
       const payload = {
-        [otpType === "email" ? "email" : "phone"]: otpType === "email" ? email : phone,
+        [otpType === "email" ? "email" : "phone"]: finalContact,
         type: authMode === "signup" ? "signup" : "signin",
       };
 
-      const { data, error } = await supabase.functions.invoke("send-email-otp", {
+      const functionName = otpType === "email" ? "send-email-otp" : "send-phone-otp";
+      const { data, error } = await supabase.functions.invoke(functionName, {
         body: JSON.stringify(payload),
       });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message || `Failed to send ${otpType} OTP`);
 
       if (data.success) {
         setAuthStep(otpType === "email" ? "otp" : "phone-otp");
-        setResendCooldown(60);
-        toast.success(`6-digit code sent to your ${otpType}!`);
+        setResendCooldown(60); 
+        toast.success(`6-digit OTP sent to ${finalContact}`);
         setTimeout(() => otpInputRefs.current[0]?.focus(), 100);
-      } else throw new Error(data.message || "Failed to send OTP");
+      } else {
+        throw new Error(data.message || `Failed to send ${otpType} OTP`);
+      }
     } catch (err: any) {
-      toast.error(err.message || "Failed to send OTP");
+      toast.error(err.message || `Failed to send ${otpType} OTP. Please try again.`);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSendPhoneOtp = async () => {
-    if (!phone) return toast.error("Phone required");
-    if (!/^\+?[0-9]{10,15}$/.test(phone)) return toast.error("Invalid phone");
-
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("send-phone-otp", {
-        body: JSON.stringify({ phone, type: authMode === "signup" ? "signup" : "signin" }),
-      });
-
-      if (error) throw error;
-
-      if (data.success) {
-        setAuthStep("phone-otp");
-        setResendCooldown(60);
-        toast.success("6-digit code sent to your phone!");
-        setTimeout(() => otpInputRefs.current[0]?.focus(), 100);
-      } else throw new Error(data.message || "Failed to send OTP");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to send OTP");
-    } finally {
-      setLoading(false);
-    }
+  const handleSendPhoneOtp = () => {
+    setOtpType("phone");
+    handleSendOtp();
   };
 
   const handleVerifyOtp = async () => {
     const code = otp.join("");
-    if (code.length !== 6) return toast.error("Enter full 6-digit code");
+    if (code.length !== 6) {
+      toast.error("Please enter the full 6-digit code");
+      return;
+    }
 
     setLoading(true);
     try {
+      const finalContact = otpType === "email" ? email : formatPhoneNumber(phone);
       const payload = {
-        [otpType === "email" ? "email" : "phone"]: otpType === "email" ? email : phone,
+        [otpType === "email" ? "email" : "phone"]: finalContact,
         token: code,
-        type: authMode,
+        type: authMode, 
       };
 
-      const { data, error } = await supabase.functions.invoke("verify-otp", {
+      const functionName = otpType === "email" ? "verify-email-otp" : "verify-phone-otp";
+      const { data, error } = await supabase.functions.invoke(functionName, {
         body: JSON.stringify(payload),
       });
 
-      if (error) throw error;
+      if (error) throw new Error("Verification failed. Please try again.");
+      if (!data?.success) throw new Error(data?.message || "Invalid or expired code");
 
-      if (data.success) {
-        toast.success("Verification successful!");
-        const { data: userData } = await supabase.auth.getUser();
-        if (userData.user) {
-          // Check if the user's profile exists in the database
-          const { data: profileData, error: profileError } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("user_id", userData.user.id)
-            .single();
-
-          if (profileError || !profileData) {
-            // If no profile exists, navigate to the profile completion page
-            navigate("/complete-profile");
-          } else {
-            // If profile exists, navigate to the browse page
-            navigate("/browse");
-          }
-        }
-      } else throw new Error(data.message || "Invalid code");
+      // SUCCESS: The useEffect will catch "SIGNED_IN" and show the success screen
+      
     } catch (err: any) {
-      toast.error(err.message || "Invalid code");
+      console.error("Verify OTP Error:", err);
+      toast.error(err.message || "Invalid code. Please check and try again.");
       setOtp(Array(6).fill(""));
       otpInputRefs.current[0]?.focus();
-    } finally {
       setLoading(false);
     }
   };
 
   const handleResetPassword = async () => {
-    if (!email) return toast.error("Email required");
-
+    if (!email) return toast.error("Email is required");
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("reset-password", {
         body: JSON.stringify({ email }),
       });
-
       if (error) throw error;
-
       if (data.success) {
         toast.success("Password reset link sent to your email!");
         setShowForgotPassword(false);
         setAuthStep("reset-password");
-      } else throw new Error(data.message || "Failed to send reset link");
+      } else {
+        throw new Error(data.message || "Failed to send reset link");
+      }
     } catch (err: any) {
-      toast.error(err.message || "Failed to send reset link");
+      toast.error(err.message || "Failed to send reset link. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleUpdatePassword = async () => {
-    if (!resetPassword) return toast.error("New password required");
+    if (!resetPassword) return toast.error("New password is required");
     if (resetPassword !== confirmPassword) return toast.error("Passwords do not match");
-
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("reset-password", {
@@ -311,16 +308,19 @@ const Auth = () => {
           token: otp.join(""),
         }),
       });
-
       if (error) throw error;
-
       if (data.success) {
         toast.success("Password updated successfully!");
         setAuthStep("email");
         setAuthMode("signin");
-      } else throw new Error(data.message || "Failed to update password");
+        setResetPassword("");
+        setConfirmPassword("");
+        setOtp(Array(6).fill(""));
+      } else {
+        throw new Error(data.message || "Failed to update password");
+      }
     } catch (err: any) {
-      toast.error(err.message || "Failed to update password");
+      toast.error(err.message || "Failed to update password. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -331,18 +331,19 @@ const Auth = () => {
     try {
       await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: `${SITE_URL}/auth` },
+        options: {
+          redirectTo: `${SITE_URL}/auth`,
+        },
       });
     } catch (err: any) {
-      toast.error(err.message || "Google auth failed");
+      toast.error(err.message || "Google authentication failed. Please try again.");
     } finally {
       setGoogleLoading(false);
     }
   };
 
   const handlePasswordAuth = async () => {
-    if (!email || !password) return toast.error("Email & password required");
-
+    if (!email || !password) return toast.error("Email and password are required");
     setLoading(true);
     try {
       if (authMode === "signin") {
@@ -355,11 +356,11 @@ const Auth = () => {
           options: { emailRedirectTo: `${SITE_URL}/auth` },
         });
         if (error) throw error;
-        toast.success("Account created! Check your email to verify.");
+        // For signup, usually need verification, but if auto-confirm is on:
+        // The useEffect will catch SIGNED_IN
       }
     } catch (err: any) {
-      toast.error(err.message || "Auth failed");
-    } finally {
+      toast.error(err.message || "Authentication failed. Please try again.");
       setLoading(false);
     }
   };
@@ -367,7 +368,7 @@ const Auth = () => {
   const goBackToEmail = () => {
     setAuthStep("email");
     setOtp(Array(6).fill(""));
-    setOtpType("email");
+    setOtpType("email"); 
   };
 
   const switchAuthMode = () => {
@@ -376,9 +377,39 @@ const Auth = () => {
     setOtp(Array(6).fill(""));
     setPassword("");
     setOtpType("email");
+    setEmail("");
+    setPhone("");
   };
 
   /* ----------------------------- Render Logic ----------------------------- */
+
+  // NEW: Success Screen Component
+   if (authStep === "success") {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white px-4 animate-in fade-in duration-700">
+        <div className="w-full max-w-sm text-center space-y-6">
+          <div className="mx-auto w-20 h-20 bg-green-50 rounded-full flex items-center justify-center border border-green-100">
+            <CheckCircle2 className="w-10 h-10 text-green-600 animate-in zoom-in duration-300" />
+          </div>
+          
+          <div className="space-y-2">
+            <h2 className="text-2xl font-semibold text-slate-900 tracking-tight">
+              Login Successful
+            </h2>
+            <p className="text-slate-500 text-sm">
+              Redirecting you to new adventures with Buseasily...
+            </p>
+          </div>
+
+          {/* Simple elegant loader */}
+          <div className="pt-4">
+             <Loader2 className="w-5 h-5 text-violet-500 animate-spin mx-auto opacity-70" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (showForgotPassword) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
@@ -392,7 +423,7 @@ const Auth = () => {
                 Reset your password
               </CardTitle>
               <CardDescription className="text-slate-500 text-sm">
-                Enter your email and we'll send you a reset link.
+                Enter your email and we’ll send you a reset link.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 pb-8 px-6">
@@ -445,7 +476,6 @@ const Auth = () => {
             </div>
             <h1 className="text-xl font-bold text-slate-900 mt-2">Reset Password</h1>
           </div>
-
           <Card className="shadow-xl border border-slate-100 rounded-3xl">
             <CardHeader className="pt-6 pb-2 text-center space-y-1">
               <CardTitle className="text-xl font-semibold text-slate-900">
@@ -455,7 +485,6 @@ const Auth = () => {
                 Enter your new password below
               </CardDescription>
             </CardHeader>
-
             <CardContent className="space-y-6 pb-6 px-6">
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -476,20 +505,12 @@ const Auth = () => {
                       onClick={() => setShowResetPassword(!showResetPassword)}
                       className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400"
                     >
-                      {showResetPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
+                      {showResetPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
                 </div>
-
                 <div className="space-y-2">
-                  <Label
-                    htmlFor="confirm-password"
-                    className="text-slate-700 text-sm"
-                  >
+                  <Label htmlFor="confirm-password" className="text-slate-700 text-sm">
                     Confirm Password
                   </Label>
                   <div className="relative">
@@ -506,16 +527,11 @@ const Auth = () => {
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                       className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400"
                     >
-                      {showConfirmPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
                 </div>
               </div>
-
               <Button
                 onClick={handleUpdatePassword}
                 disabled={loading || !resetPassword || resetPassword !== confirmPassword}
@@ -530,7 +546,6 @@ const Auth = () => {
                   </>
                 )}
               </Button>
-
               <Button
                 variant="ghost"
                 onClick={() => {
@@ -563,7 +578,6 @@ const Auth = () => {
             </div>
             <h1 className="text-xl font-bold text-slate-900 mt-2">Buseasily</h1>
           </div>
-
           <Card className="shadow-xl border border-slate-100 rounded-3xl">
             <CardHeader className="pt-6 pb-2 text-center space-y-1">
               <div className="mx-auto h-14 w-14 rounded-full bg-violet-100 flex items-center justify-center mb-2">
@@ -579,11 +593,10 @@ const Auth = () => {
               <CardDescription className="text-slate-500 text-sm px-4">
                 We sent a 6-digit code to{" "}
                 <span className="font-medium text-slate-700 break-all">
-                  {otpType === "email" ? email : phone}
+                  {otpType === "email" ? email : formatPhoneNumber(phone)}
                 </span>
               </CardDescription>
             </CardHeader>
-
             <CardContent className="space-y-6 pb-6 px-6">
               <div className="flex justify-center gap-2 sm:gap-3">
                 {otp.map((digit, index) => (
@@ -605,7 +618,6 @@ const Auth = () => {
                   />
                 ))}
               </div>
-
               <Button
                 onClick={handleVerifyOtp}
                 disabled={loading || otp.join("").length !== 6}
@@ -620,13 +632,10 @@ const Auth = () => {
                   </>
                 )}
               </Button>
-
               <div className="text-center space-y-2">
-                <p className="text-sm text-slate-500">Didn't receive the code?</p>
+                <p className="text-sm text-slate-500">Didn&apos;t receive the code?</p>
                 <button
-                  onClick={
-                    otpType === "email" ? handleSendOtp : handleSendPhoneOtp
-                  }
+                  onClick={otpType === "email" ? handleSendOtp : handleSendPhoneOtp}
                   disabled={resendCooldown > 0 || resendLoading}
                   className={`text-sm font-medium flex items-center justify-center gap-1 mx-auto ${
                     resendCooldown > 0
@@ -644,7 +653,6 @@ const Auth = () => {
                     : "Resend code"}
                 </button>
               </div>
-
               <Button
                 variant="ghost"
                 onClick={goBackToEmail}
@@ -677,7 +685,6 @@ const Auth = () => {
               Buseasily
             </h1>
           </div>
-
           <Card className="shadow-xl border border-slate-100 rounded-2xl sm:rounded-3xl">
             <CardHeader className="pt-5 sm:pt-6 pb-3 sm:pb-4 text-center space-y-1">
               <CardTitle className="text-lg sm:text-xl font-semibold text-slate-900">
@@ -689,9 +696,7 @@ const Auth = () => {
                   : "Join Buseasily to start booking"}
               </CardDescription>
             </CardHeader>
-
             <CardContent className="space-y-4 sm:space-y-5 pb-5 sm:pb-6 px-4 sm:px-6">
-              {/* Google */}
               <Button
                 onClick={handleGoogleAuth}
                 disabled={googleLoading}
@@ -707,16 +712,12 @@ const Auth = () => {
                 )}
                 Continue with Google
               </Button>
-
-              {/* Separator */}
               <div className="relative my-3">
                 <Separator className="bg-slate-200" />
                 <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-[10px] sm:text-[11px] text-slate-400">
                   Or with {otpType === "email" ? "email" : "phone"}
                 </span>
               </div>
-
-              {/* Email/Phone Toggle */}
               <div className="flex gap-2">
                 <Button
                   type="button"
@@ -745,19 +746,17 @@ const Auth = () => {
                   Phone
                 </Button>
               </div>
-
-              {/* Email or Phone Input */}
               <div className="space-y-1.5">
                 <Label htmlFor={otpType} className="text-xs text-slate-600">
                   {otpType === "email" ? "Email" : "Phone Number"}
                 </Label>
                 <Input
                   id={otpType}
-                  type={otpType === "email" ? "email" : "tel"}
+                  type={otpType === "email" ? "email" : "tel"} 
                   placeholder={
                     otpType === "email"
                       ? "your@email.com"
-                      : "+91 12345 67890"
+                      : "9876543210"
                   }
                   value={otpType === "email" ? email : phone}
                   onChange={(e) =>
@@ -768,15 +767,10 @@ const Auth = () => {
                   className="h-10 sm:h-11 rounded-xl bg-slate-50 border-slate-200 text-sm"
                 />
               </div>
-
-              {/* Password (if password method) */}
               {loginMethod === "password" && (
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label
-                      htmlFor="password"
-                      className="text-xs text-slate-600"
-                    >
+                    <Label htmlFor="password" className="text-xs text-slate-600">
                       Password
                     </Label>
                     {authMode === "signin" && (
@@ -803,21 +797,13 @@ const Auth = () => {
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400"
                     >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
                 </div>
               )}
-
-              {/* Main Button */}
               <Button
-                onClick={
-                  loginMethod === "otp" ? handleSendOtp : handlePasswordAuth
-                }
+                onClick={loginMethod === "otp" ? handleSendOtp : handlePasswordAuth}
                 disabled={loading}
                 className="w-full h-10 sm:h-11 rounded-xl bg-violet-500 hover:bg-violet-600 text-sm font-semibold"
               >
@@ -838,8 +824,6 @@ const Auth = () => {
                   "Create account"
                 )}
               </Button>
-
-              {/* Toggle Method & Mode */}
               <div className="flex flex-col gap-1 text-center text-[11px] sm:text-[12px] text-slate-500">
                 <button
                   type="button"
@@ -852,10 +836,9 @@ const Auth = () => {
                     ? "Use password instead"
                     : "Use verification code instead"}
                 </button>
-
                 <p className="mt-1">
                   {authMode === "signin"
-                    ? "Don't have an account?"
+                    ? "Don&apos;t have an account?"
                     : "Already have an account?"}{" "}
                   <button
                     type="button"
@@ -870,8 +853,6 @@ const Auth = () => {
           </Card>
         </div>
       </div>
-
-      {/* RIGHT: Hero Image (hidden on small screens) */}
       <div
         className="hidden lg:block lg:w-1/2 bg-cover bg-center"
         style={{
@@ -879,7 +860,7 @@ const Auth = () => {
             "url('https://images.unsplash.com/photo-1529070538774-1843cb3265df?auto=format&fit=crop&w=1600&q=80')",
         }}
       >
-       <div className="h-full w-full flex items-center justify-center bg-black/30 backdrop-blur-sm">
+        <div className="h-full w-full flex items-center justify-center bg-black/30 backdrop-blur-sm">
           <div className="text-center text-white px-8 max-w-md">
             <h2 className="text-3xl font-bold mb-4 drop-shadow-lg">
               Book Bus Tickets With Ease

@@ -628,15 +628,15 @@ const SeatSelection = () => {
     if (seat.status === "booked") {
       const isOwnBooking = bookedBy[seat.id] === userId;
       return isOwnBooking
-        ? "bg-emerald-500/30 hover:bg-emerald-500/40 cursor-pointer border-emerald-500"
-        : "bg-destructive/30 hover:bg-destructive/40 cursor-pointer border-destructive";
+        ? "bg-emerald-500/30 hover:bg-emerald-500/40 cursor-pointer border-emerald-500 text-emerald-900"
+        : "bg-destructive/30 hover:bg-destructive/40 cursor-pointer border-destructive text-destructive-foreground";
     }
     if (selectedSeats.includes(seat.id))
       return "bg-primary text-primary-foreground hover:bg-primary/90 border-primary";
     if (seat.status === "locked" && seat.locked_by !== userId)
-      return "bg-muted cursor-not-allowed border-muted-foreground";
+      return "bg-muted cursor-not-allowed border-muted-foreground text-muted-foreground";
     if (seat.status === "locked" && seat.locked_by === userId)
-      return "bg-primary/20 border-primary/60 hover:bg-primary/30";
+      return "bg-primary/20 border-primary/60 hover:bg-primary/30 text-primary";
     return "bg-accent hover:bg-primary/10 cursor-pointer border-border hover:border-primary/50";
   };
 
@@ -657,7 +657,7 @@ const SeatSelection = () => {
 
   /* ------------------------------ Render ------------------------------ */
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-accent relative">
+    <div className="min-h-screen bg-gradient-to-b from-background to-accent relative pb-24 lg:pb-8">
       {/* Notifications */}
       <NotificationStack notifications={notifications} />
 
@@ -846,7 +846,7 @@ const SeatSelection = () => {
           {/* LEFT: Seat Selection */}
           <div className="lg:col-span-2">
             <Card className="p-4 sm:p-6 border-border">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
                 <div>
                   <h2 className="text-xl sm:text-2xl font-bold text-foreground">
                     Select Your Seats
@@ -863,27 +863,47 @@ const SeatSelection = () => {
                   Booked seats still show who's travelling
                 </Badge>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4 sm:mb-6 text-xs sm:text-sm">
-                <div className="bg-accent/60 rounded-lg p-3 border border-border">
-                  <p className="text-muted-foreground">Fare per seat</p>
-                  <p className="mt-1 font-semibold text-foreground flex items-center gap-1">
-                    <IndianRupee className="h-3 w-3" />
-                    {bus?.fare}
-                  </p>
+
+              {/* --- SEAT COLOR LEGEND --- */}
+              <div className="flex flex-wrap gap-3 sm:gap-4 mb-6 p-3 bg-accent/40 rounded-lg border border-border/50">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded border bg-emerald-500/30 border-emerald-500"></div>
+                  <span className="text-[10px] sm:text-xs text-muted-foreground">
+                    Your Booking
+                  </span>
                 </div>
-                <div className="bg-accent/60 rounded-lg p-3 border border-border">
-                  <p className="text-muted-foreground">Available seats</p>
-                  <p className="mt-1 font-semibold text-foreground">
-                    {availableSeatsCount}
-                  </p>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded border bg-destructive/30 border-destructive"></div>
+                  <span className="text-[10px] sm:text-xs text-muted-foreground">
+                    Booked
+                  </span>
                 </div>
-                <div className="bg-accent/60 rounded-lg p-3 border border-border">
-                  <p className="text-muted-foreground">Total seats</p>
-                  <p className="mt-1 font-semibold text-foreground">
-                    {bus?.total_seats ?? "-"}
-                  </p>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded border bg-primary/20 border-primary/60"></div>
+                  <span className="text-[10px] sm:text-xs text-muted-foreground">
+                    Your Lock
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded border bg-muted border-muted-foreground"></div>
+                  <span className="text-[10px] sm:text-xs text-muted-foreground">
+                    Locked
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded border bg-primary border-primary"></div>
+                  <span className="text-[10px] sm:text-xs text-muted-foreground">
+                    Selected
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded border bg-accent border-border"></div>
+                  <span className="text-[10px] sm:text-xs text-muted-foreground">
+                    Available
+                  </span>
                 </div>
               </div>
+
               <div className="mb-4 sm:mb-6 flex justify-center sm:justify-end">
                 <button
                   type="button"
@@ -1181,23 +1201,6 @@ const SeatSelection = () => {
                       </div>
                     </div>
                   </div>
-
-                  {/* Tiny preview of exactly which seats are counted here */}
-                  {currentSeatIds.length > 0 && (
-                    <div className="mt-1 flex flex-wrap gap-1.5">
-                      {seats
-                        .filter((s) => currentSeatIds.includes(s.id))
-                        .map((s) => (
-                          <Badge
-                            key={s.id}
-                            variant="outline"
-                            className="text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full"
-                          >
-                            {s.seat_number}
-                          </Badge>
-                        ))}
-                    </div>
-                  )}
                 </div>
 
                 {/* Total */}
@@ -1226,12 +1229,12 @@ const SeatSelection = () => {
                   </div>
                 </div>
 
-                {/* CTA */}
+                {/* CTA (Hidden on Mobile to use Fixed Footer instead) */}
                 <Button
                   onClick={proceedToBooking}
                   disabled={currentSeatIds.length === 0}
                   className={cn(
-                    "w-full shadow-lg text-sm sm:text-base rounded-xl transition-all py-6",
+                    "w-full shadow-lg text-sm sm:text-base rounded-xl transition-all py-6 hidden lg:flex",
                     currentSeatIds.length === 0
                       ? "bg-muted text-muted-foreground cursor-not-allowed"
                       : "bg-primary hover:bg-primary/90 text-primary-foreground"
@@ -1245,6 +1248,27 @@ const SeatSelection = () => {
               </Card>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* FIXED MOBILE FOOTER */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 lg:hidden z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+        <div className="flex items-center justify-between gap-4 max-w-md mx-auto">
+          <div>
+            <p className="text-xs text-muted-foreground">Total Amount</p>
+            <p className="text-xl font-bold flex items-center text-foreground">
+              <IndianRupee className="h-4 w-4" />
+              {totalFare}
+            </p>
+          </div>
+          <Button
+            size="lg"
+            className="flex-1 font-bold"
+            onClick={proceedToBooking}
+            disabled={currentSeatIds.length === 0}
+          >
+            Proceed to Pay
+          </Button>
         </div>
       </div>
     </div>
